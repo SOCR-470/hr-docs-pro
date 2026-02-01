@@ -14,6 +14,10 @@ import Templates from "./pages/Templates";
 import Analytics from "./pages/Analytics";
 import DocumentShares from "./pages/DocumentShares";
 import LgpdConsent from "./pages/LgpdConsent";
+import LegalDashboard from "./pages/LegalDashboard";
+import Lawsuits from "./pages/Lawsuits";
+import Hearings from "./pages/Hearings";
+import Lawyers from "./pages/Lawyers";
 
 function Router() {
   return (
@@ -64,6 +68,28 @@ function Router() {
       <Route path="/timeclock">
         <DashboardLayout>
           <TimeclockImport />
+        </DashboardLayout>
+      </Route>
+      
+      {/* Legal Module Routes */}
+      <Route path="/legal">
+        <DashboardLayout>
+          <LegalDashboard />
+        </DashboardLayout>
+      </Route>
+      <Route path="/lawsuits">
+        <DashboardLayout>
+          <Lawsuits />
+        </DashboardLayout>
+      </Route>
+      <Route path="/hearings">
+        <DashboardLayout>
+          <Hearings />
+        </DashboardLayout>
+      </Route>
+      <Route path="/lawyers">
+        <DashboardLayout>
+          <Lawyers />
         </DashboardLayout>
       </Route>
       

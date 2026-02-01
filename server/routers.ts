@@ -18,6 +18,8 @@ import * as analyticsService from "./analyticsService";
 import * as templateApplicationService from "./templateApplicationService";
 import { sendLgpdConsentEmail, sendDocumentShareEmail, sendDocumentSignatureEmail, lgpdEmailTemplates } from "./emailService";
 import { generateLgpdConsentPdf } from "./pdfService";
+import * as lawsuitDb from "./lawsuitDb";
+import * as escavadorService from "./escavadorService";
 
 // Admin-only procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -1190,6 +1192,629 @@ export const appRouter = router({
       .input(z.object({ consentId: z.number() }))
       .mutation(async ({ input }) => {
         return generateLgpdConsentPdf(input.consentId);
+      }),
+  }),
+
+  // ============ LAWYERS ============
+  lawyers: router({
+    list: protectedProcedure.query(async () => {
+      return lawsuitDb.getLawyers();
+    }),
+    
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return lawsuitDb.getLawyerById(input.id);
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string(),
+        oabNumber: z.string(),
+        oabState: z.string(),
+        email: z.string().email().optional(),
+        phone: z.string().optional(),
+        lawFirm: z.string().optional(),
+        specialization: z.string().optional(),
+        isInternal: z.boolean().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const id = await lawsuitDb.createLawyer(input);
+        return { id };
+      }),
+    
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        oabNumber: z.string().optional(),
+        oabState: z.string().optional(),
+        email: z.string().email().optional().nullable(),
+        phone: z.string().optional().nullable(),
+        lawFirm: z.string().optional().nullable(),
+        specialization: z.string().optional().nullable(),
+        isInternal: z.boolean().optional(),
+        notes: z.string().optional().nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await lawsuitDb.updateLawyer(id, data);
+        return { success: true };
+      }),
+    
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await lawsuitDb.deleteLawyer(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ============ LAWSUITS ============
+  lawsuits: router({
+    list: protectedProcedure
+      .input(z.object({
+        status: z.string().optional(),
+        phase: z.string().optional(),
+        lawyerId: z.number().optional(),
+        departmentId: z.number().optional(),
+        search: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return lawsuitDb.getLawsuits(input);
+      }),
+    
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const lawsuit = await lawsuitDb.getLawsuitById(input.id);
+        if (!lawsuit) throw new TRPCError({ code: 'NOT_FOUND' });
+        return lawsuit;
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        processNumber: z.string(),
+        courtName: z.string(),
+        courtRegion: z.string().optional(),
+        courtCity: z.string().optional(),
+        courtState: z.string().optional(),
+        claimantId: z.number().optional(),
+        claimantName: z.string(),
+        claimantCpf: z.string().optional(),
+        claimantLawyer: z.string().optional(),
+        lawyerId: z.number().optional(),
+        lawsuitType: z.enum(['labor_claim', 'work_accident', 'occupational_disease', 'moral_damage', 'harassment', 'wrongful_termination', 'salary_differences', 'overtime', 'other']),
+        filingDate: z.date().optional(),
+        distributionDate: z.date().optional(),
+        claimAmount: z.string().optional(),
+        provisionAmount: z.string().optional(),
+        claimSummary: z.string().optional(),
+        defenseStrategy: z.string().optional(),
+        departmentId: z.number().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await lawsuitDb.createLawsuit({ ...input, createdBy: ctx.user.id });
+        return { id };
+      }),
+    
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        processNumber: z.string().optional(),
+        courtName: z.string().optional(),
+        courtRegion: z.string().optional().nullable(),
+        courtCity: z.string().optional().nullable(),
+        courtState: z.string().optional().nullable(),
+        claimantId: z.number().optional().nullable(),
+        claimantName: z.string().optional(),
+        claimantCpf: z.string().optional().nullable(),
+        claimantLawyer: z.string().optional().nullable(),
+        lawyerId: z.number().optional().nullable(),
+        lawsuitType: z.enum(['labor_claim', 'work_accident', 'occupational_disease', 'moral_damage', 'harassment', 'wrongful_termination', 'salary_differences', 'overtime', 'other']).optional(),
+        status: z.enum(['active', 'suspended', 'settled', 'won', 'lost', 'partially_lost', 'archived', 'appealed']).optional(),
+        phase: z.enum(['initial', 'instruction', 'judgment', 'appeal', 'execution', 'closed']).optional(),
+        filingDate: z.date().optional().nullable(),
+        distributionDate: z.date().optional().nullable(),
+        claimAmount: z.string().optional().nullable(),
+        provisionAmount: z.string().optional().nullable(),
+        settlementAmount: z.string().optional().nullable(),
+        condemnationAmount: z.string().optional().nullable(),
+        claimSummary: z.string().optional().nullable(),
+        defenseStrategy: z.string().optional().nullable(),
+        departmentId: z.number().optional().nullable(),
+        notes: z.string().optional().nullable(),
+        resultDate: z.date().optional().nullable(),
+        resultSummary: z.string().optional().nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await lawsuitDb.updateLawsuit(id, data);
+        return { success: true };
+      }),
+    
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await lawsuitDb.deleteLawsuit(input.id);
+        return { success: true };
+      }),
+    
+    stats: protectedProcedure.query(async () => {
+      return lawsuitDb.getLawsuitStats();
+    }),
+    
+    byDepartment: protectedProcedure.query(async () => {
+      return lawsuitDb.getLawsuitsByDepartment();
+    }),
+    
+    byType: protectedProcedure.query(async () => {
+      return lawsuitDb.getLawsuitsByType();
+    }),
+  }),
+
+  // ============ HEARINGS ============
+  hearings: router({
+    list: protectedProcedure
+      .input(z.object({
+        lawsuitId: z.number().optional(),
+        status: z.string().optional(),
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return lawsuitDb.getHearings(input);
+      }),
+    
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const hearing = await lawsuitDb.getHearingById(input.id);
+        if (!hearing) throw new TRPCError({ code: 'NOT_FOUND' });
+        return hearing;
+      }),
+    
+    upcoming: protectedProcedure
+      .input(z.object({ days: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return lawsuitDb.getUpcomingHearings(input?.days || 7);
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        lawsuitId: z.number(),
+        hearingType: z.enum(['initial', 'conciliation', 'instruction', 'judgment', 'other']),
+        scheduledDate: z.date(),
+        scheduledTime: z.string().optional(),
+        location: z.string().optional(),
+        isVirtual: z.boolean().optional(),
+        virtualLink: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const id = await lawsuitDb.createHearing(input);
+        return { id };
+      }),
+    
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        hearingType: z.enum(['initial', 'conciliation', 'instruction', 'judgment', 'other']).optional(),
+        scheduledDate: z.date().optional(),
+        scheduledTime: z.string().optional().nullable(),
+        location: z.string().optional().nullable(),
+        isVirtual: z.boolean().optional(),
+        virtualLink: z.string().optional().nullable(),
+        status: z.enum(['scheduled', 'confirmed', 'rescheduled', 'completed', 'cancelled', 'postponed']).optional(),
+        outcome: z.string().optional().nullable(),
+        nextSteps: z.string().optional().nullable(),
+        notes: z.string().optional().nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await lawsuitDb.updateHearing(id, data);
+        return { success: true };
+      }),
+    
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await lawsuitDb.deleteHearing(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ============ WITNESSES ============
+  witnesses: router({
+    list: protectedProcedure
+      .input(z.object({ lawsuitId: z.number() }))
+      .query(async ({ input }) => {
+        return lawsuitDb.getWitnesses(input.lawsuitId);
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        lawsuitId: z.number(),
+        hearingId: z.number().optional(),
+        name: z.string(),
+        cpf: z.string().optional(),
+        phone: z.string().optional(),
+        email: z.string().email().optional(),
+        employeeId: z.number().optional(),
+        role: z.enum(['company_witness', 'claimant_witness', 'expert']),
+        relationship: z.string().optional(),
+        expectedTestimony: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const id = await lawsuitDb.createWitness(input);
+        return { id };
+      }),
+    
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        hearingId: z.number().optional().nullable(),
+        name: z.string().optional(),
+        cpf: z.string().optional().nullable(),
+        phone: z.string().optional().nullable(),
+        email: z.string().email().optional().nullable(),
+        employeeId: z.number().optional().nullable(),
+        role: z.enum(['company_witness', 'claimant_witness', 'expert']).optional(),
+        relationship: z.string().optional().nullable(),
+        expectedTestimony: z.string().optional().nullable(),
+        actualTestimony: z.string().optional().nullable(),
+        status: z.enum(['pending', 'summoned', 'confirmed', 'testified', 'absent', 'excused']).optional(),
+        summonedAt: z.date().optional().nullable(),
+        notes: z.string().optional().nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await lawsuitDb.updateWitness(id, data);
+        return { success: true };
+      }),
+    
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await lawsuitDb.deleteWitness(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ============ LAWSUIT DOCUMENTS ============
+  lawsuitDocuments: router({
+    list: protectedProcedure
+      .input(z.object({ lawsuitId: z.number() }))
+      .query(async ({ input }) => {
+        return lawsuitDb.getLawsuitDocuments(input.lawsuitId);
+      }),
+    
+    upload: protectedProcedure
+      .input(z.object({
+        lawsuitId: z.number(),
+        hearingId: z.number().optional(),
+        documentType: z.enum(['initial_petition', 'defense', 'reply', 'evidence', 'witness_list', 'expert_report', 'appeal', 'sentence', 'settlement', 'subpoena', 'court_order', 'other']),
+        title: z.string(),
+        description: z.string().optional(),
+        fileName: z.string(),
+        fileData: z.string(), // Base64
+        mimeType: z.string(),
+        linkedDocumentId: z.number().optional(),
+        linkedRecurringDocId: z.number().optional(),
+        receivedAt: z.date().optional(),
+        dueDate: z.date().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const fileBuffer = Buffer.from(input.fileData, 'base64');
+        const fileKey = `lawsuits/${input.lawsuitId}/${nanoid()}-${input.fileName}`;
+        const { url } = await storagePut(fileKey, fileBuffer, input.mimeType);
+        
+        const id = await lawsuitDb.createLawsuitDocument({
+          lawsuitId: input.lawsuitId,
+          hearingId: input.hearingId,
+          documentType: input.documentType,
+          title: input.title,
+          description: input.description,
+          fileName: input.fileName,
+          fileUrl: url,
+          fileKey,
+          mimeType: input.mimeType,
+          fileSize: fileBuffer.length,
+          linkedDocumentId: input.linkedDocumentId,
+          linkedRecurringDocId: input.linkedRecurringDocId,
+          receivedAt: input.receivedAt,
+          dueDate: input.dueDate,
+          uploadedBy: ctx.user.id,
+        });
+        
+        return { id, url };
+      }),
+    
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await lawsuitDb.deleteLawsuitDocument(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ============ DEADLINES ============
+  deadlines: router({
+    list: protectedProcedure
+      .input(z.object({
+        lawsuitId: z.number().optional(),
+        status: z.string().optional(),
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return lawsuitDb.getDeadlines(input);
+      }),
+    
+    upcoming: protectedProcedure
+      .input(z.object({ days: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return lawsuitDb.getUpcomingDeadlines(input?.days || 7);
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        lawsuitId: z.number(),
+        deadlineType: z.enum(['defense', 'reply', 'evidence', 'witness_list', 'appeal', 'counter_reasons', 'manifestation', 'payment', 'other']),
+        title: z.string(),
+        description: z.string().optional(),
+        startDate: z.date(),
+        dueDate: z.date(),
+        businessDaysOnly: z.boolean().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const id = await lawsuitDb.createDeadline(input);
+        return { id };
+      }),
+    
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        deadlineType: z.enum(['defense', 'reply', 'evidence', 'witness_list', 'appeal', 'counter_reasons', 'manifestation', 'payment', 'other']).optional(),
+        title: z.string().optional(),
+        description: z.string().optional().nullable(),
+        startDate: z.date().optional(),
+        dueDate: z.date().optional(),
+        businessDaysOnly: z.boolean().optional(),
+        status: z.enum(['pending', 'in_progress', 'completed', 'missed', 'extended']).optional(),
+        notes: z.string().optional().nullable(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { id, ...data } = input;
+        if (data.status === 'completed') {
+          (data as any).completedAt = new Date();
+          (data as any).completedBy = ctx.user.id;
+        }
+        await lawsuitDb.updateDeadline(id, data);
+        return { success: true };
+      }),
+    
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await lawsuitDb.deleteDeadline(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ============ MOVEMENTS ============
+  movements: router({
+    list: protectedProcedure
+      .input(z.object({ lawsuitId: z.number() }))
+      .query(async ({ input }) => {
+        return lawsuitDb.getMovements(input.lawsuitId);
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        lawsuitId: z.number(),
+        movementDate: z.date(),
+        title: z.string(),
+        description: z.string().optional(),
+        isImportant: z.boolean().optional(),
+        requiresAction: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const id = await lawsuitDb.createMovement({
+          ...input,
+          source: 'manual',
+        });
+        return { id };
+      }),
+  }),
+
+  // ============ FINANCIAL ============
+  lawsuitFinancial: router({
+    list: protectedProcedure
+      .input(z.object({ lawsuitId: z.number() }))
+      .query(async ({ input }) => {
+        return lawsuitDb.getFinancialRecords(input.lawsuitId);
+      }),
+    
+    summary: protectedProcedure
+      .input(z.object({ lawsuitId: z.number() }))
+      .query(async ({ input }) => {
+        return lawsuitDb.getFinancialSummary(input.lawsuitId);
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        lawsuitId: z.number(),
+        transactionType: z.enum(['court_fee', 'lawyer_fee', 'expert_fee', 'settlement_payment', 'condemnation_payment', 'deposit', 'other_expense', 'reimbursement']),
+        description: z.string(),
+        amount: z.string(),
+        dueDate: z.date().optional(),
+        paidDate: z.date().optional(),
+        status: z.enum(['pending', 'paid', 'overdue', 'cancelled']).optional(),
+        installmentNumber: z.number().optional(),
+        totalInstallments: z.number().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await lawsuitDb.createFinancialRecord({
+          ...input,
+          createdBy: ctx.user.id,
+        });
+        return { id };
+      }),
+    
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        transactionType: z.enum(['court_fee', 'lawyer_fee', 'expert_fee', 'settlement_payment', 'condemnation_payment', 'deposit', 'other_expense', 'reimbursement']).optional(),
+        description: z.string().optional(),
+        amount: z.string().optional(),
+        dueDate: z.date().optional().nullable(),
+        paidDate: z.date().optional().nullable(),
+        status: z.enum(['pending', 'paid', 'overdue', 'cancelled']).optional(),
+        installmentNumber: z.number().optional().nullable(),
+        totalInstallments: z.number().optional().nullable(),
+        notes: z.string().optional().nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await lawsuitDb.updateFinancialRecord(id, data);
+        return { success: true };
+      }),
+    
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await lawsuitDb.deleteFinancialRecord(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ============ COURT COMMUNICATIONS ============
+  courtCommunications: router({
+    list: protectedProcedure
+      .input(z.object({
+        lawsuitId: z.number().optional(),
+        status: z.string().optional(),
+        isProcessed: z.boolean().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return lawsuitDb.getCourtCommunications(input);
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        lawsuitId: z.number().optional(),
+        communicationType: z.enum(['email', 'official_diary', 'subpoena', 'notification', 'other']),
+        subject: z.string().optional(),
+        content: z.string().optional(),
+        senderEmail: z.string().optional(),
+        receivedAt: z.date(),
+        attachmentData: z.string().optional(), // Base64
+        attachmentName: z.string().optional(),
+        attachmentMimeType: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        let attachmentUrl: string | undefined;
+        let attachmentKey: string | undefined;
+        
+        if (input.attachmentData && input.attachmentName) {
+          const fileBuffer = Buffer.from(input.attachmentData, 'base64');
+          attachmentKey = `court-communications/${nanoid()}-${input.attachmentName}`;
+          const result = await storagePut(attachmentKey, fileBuffer, input.attachmentMimeType || 'application/pdf');
+          attachmentUrl = result.url;
+        }
+        
+        const id = await lawsuitDb.createCourtCommunication({
+          lawsuitId: input.lawsuitId,
+          communicationType: input.communicationType,
+          subject: input.subject,
+          content: input.content,
+          senderEmail: input.senderEmail,
+          receivedAt: input.receivedAt,
+          attachmentUrl,
+          attachmentKey,
+          attachmentName: input.attachmentName,
+        });
+        
+        return { id };
+      }),
+    
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        lawsuitId: z.number().optional().nullable(),
+        status: z.enum(['unread', 'read', 'processed', 'archived']).optional(),
+        isProcessed: z.boolean().optional(),
+        notes: z.string().optional().nullable(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { id, ...data } = input;
+        if (data.isProcessed) {
+          (data as any).processedAt = new Date();
+          (data as any).processedBy = ctx.user.id;
+        }
+        await lawsuitDb.updateCourtCommunication(id, data);
+        return { success: true };
+      }),
+  }),
+
+  // ============ ESCAVADOR INTEGRATION ============
+  escavador: router({
+    status: protectedProcedure.query(async () => {
+      return escavadorService.getEscavadorStatus();
+    }),
+    
+    configure: adminProcedure
+      .input(z.object({
+        apiKey: z.string(),
+        cnpj: z.string().optional(),
+        companyName: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const success = await escavadorService.configureEscavador(
+          input.apiKey,
+          input.cnpj,
+          input.companyName
+        );
+        return { success };
+      }),
+    
+    searchByNumber: protectedProcedure
+      .input(z.object({ processNumber: z.string() }))
+      .query(async ({ input }) => {
+        return escavadorService.searchProcessByNumber(input.processNumber);
+      }),
+    
+    searchByCnpj: protectedProcedure
+      .input(z.object({ cnpj: z.string() }))
+      .query(async ({ input }) => {
+        return escavadorService.searchProcessesByCnpj(input.cnpj);
+      }),
+    
+    syncProcess: protectedProcedure
+      .input(z.object({ lawsuitId: z.number() }))
+      .mutation(async ({ input }) => {
+        const success = await escavadorService.syncProcess(input.lawsuitId);
+        return { success };
+      }),
+    
+    syncAll: adminProcedure.mutation(async () => {
+      return escavadorService.syncAllProcesses();
+    }),
+    
+    findNew: protectedProcedure.query(async () => {
+      return escavadorService.findNewProcesses();
+    }),
+    
+    import: protectedProcedure
+      .input(z.object({ escavadorProcess: z.any() }))
+      .mutation(async ({ input }) => {
+        const id = await escavadorService.importProcess(input.escavadorProcess);
+        return { id };
       }),
   }),
 

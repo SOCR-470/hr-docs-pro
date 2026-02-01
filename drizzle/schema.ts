@@ -343,3 +343,426 @@ export const emailLog = mysqlTable("email_log", {
 
 export type EmailLog = typeof emailLog.$inferSelect;
 export type InsertEmailLog = typeof emailLog.$inferInsert;
+
+
+// ============ LAWYERS (Advogados) ============
+export const lawyers = mysqlTable("lawyers", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  oabNumber: varchar("oabNumber", { length: 20 }).notNull(), // Ex: OAB/SP 123456
+  oabState: varchar("oabState", { length: 2 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 20 }),
+  lawFirm: varchar("lawFirm", { length: 200 }), // Escritório
+  specialization: varchar("specialization", { length: 100 }), // Trabalhista, etc.
+  isInternal: boolean("isInternal").default(false), // Advogado interno ou externo
+  isActive: boolean("isActive").default(true),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Lawyer = typeof lawyers.$inferSelect;
+export type InsertLawyer = typeof lawyers.$inferInsert;
+
+// ============ LABOR LAWSUITS (Processos Trabalhistas) ============
+export const laborLawsuits = mysqlTable("labor_lawsuits", {
+  id: int("id").autoincrement().primaryKey(),
+  processNumber: varchar("processNumber", { length: 30 }).notNull().unique(), // Formato CNJ
+  courtName: varchar("courtName", { length: 200 }).notNull(), // Ex: 1ª Vara do Trabalho de São Paulo
+  courtRegion: varchar("courtRegion", { length: 50 }), // TRT da 2ª Região
+  courtCity: varchar("courtCity", { length: 100 }),
+  courtState: varchar("courtState", { length: 2 }),
+  
+  // Partes
+  claimantId: int("claimantId").references(() => employees.id), // Ex-funcionário reclamante
+  claimantName: varchar("claimantName", { length: 200 }).notNull(), // Nome mesmo se não for funcionário
+  claimantCpf: varchar("claimantCpf", { length: 14 }),
+  claimantLawyer: varchar("claimantLawyer", { length: 200 }), // Advogado do reclamante
+  
+  // Advogado da empresa
+  lawyerId: int("lawyerId").references(() => lawyers.id),
+  
+  // Tipo e classificação
+  lawsuitType: mysqlEnum("lawsuitType", [
+    "labor_claim", // Reclamação trabalhista
+    "work_accident", // Acidente de trabalho
+    "occupational_disease", // Doença ocupacional
+    "moral_damage", // Dano moral
+    "harassment", // Assédio
+    "wrongful_termination", // Rescisão indevida
+    "salary_differences", // Diferenças salariais
+    "overtime", // Horas extras
+    "other"
+  ]).default("labor_claim").notNull(),
+  
+  // Datas
+  filingDate: timestamp("filingDate"), // Data de ajuizamento
+  distributionDate: timestamp("distributionDate"), // Data de distribuição
+  
+  // Valores
+  claimAmount: decimal("claimAmount", { precision: 15, scale: 2 }), // Valor da causa
+  provisionAmount: decimal("provisionAmount", { precision: 15, scale: 2 }), // Provisão contábil
+  settlementAmount: decimal("settlementAmount", { precision: 15, scale: 2 }), // Valor do acordo (se houver)
+  condemnationAmount: decimal("condemnationAmount", { precision: 15, scale: 2 }), // Valor da condenação
+  
+  // Status
+  status: mysqlEnum("status", [
+    "active", // Em andamento
+    "suspended", // Suspenso
+    "settled", // Acordo
+    "won", // Ganho pela empresa
+    "lost", // Perdido pela empresa
+    "partially_lost", // Parcialmente perdido
+    "archived", // Arquivado
+    "appealed" // Em recurso
+  ]).default("active").notNull(),
+  
+  phase: mysqlEnum("phase", [
+    "initial", // Fase inicial
+    "instruction", // Instrução
+    "judgment", // Julgamento
+    "appeal", // Recurso
+    "execution", // Execução
+    "closed" // Encerrado
+  ]).default("initial").notNull(),
+  
+  // Descrição e notas
+  claimSummary: text("claimSummary"), // Resumo do pedido
+  defenseStrategy: text("defenseStrategy"), // Estratégia de defesa
+  notes: text("notes"),
+  
+  // Integração Escavador
+  escavadorId: varchar("escavadorId", { length: 100 }), // ID no Escavador
+  lastSyncAt: timestamp("lastSyncAt"), // Última sincronização
+  
+  // Resultado
+  resultDate: timestamp("resultDate"),
+  resultSummary: text("resultSummary"),
+  
+  // Departamento relacionado
+  departmentId: int("departmentId").references(() => departments.id),
+  
+  createdBy: int("createdBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LaborLawsuit = typeof laborLawsuits.$inferSelect;
+export type InsertLaborLawsuit = typeof laborLawsuits.$inferInsert;
+
+// ============ LAWSUIT HEARINGS (Audiências) ============
+export const lawsuitHearings = mysqlTable("lawsuit_hearings", {
+  id: int("id").autoincrement().primaryKey(),
+  lawsuitId: int("lawsuitId").references(() => laborLawsuits.id).notNull(),
+  
+  hearingType: mysqlEnum("hearingType", [
+    "initial", // Audiência inicial
+    "conciliation", // Conciliação
+    "instruction", // Instrução
+    "judgment", // Julgamento
+    "other"
+  ]).notNull(),
+  
+  scheduledDate: timestamp("scheduledDate").notNull(),
+  scheduledTime: varchar("scheduledTime", { length: 10 }), // HH:MM
+  location: varchar("location", { length: 300 }), // Endereço/sala
+  isVirtual: boolean("isVirtual").default(false),
+  virtualLink: text("virtualLink"), // Link para audiência virtual
+  
+  status: mysqlEnum("status", [
+    "scheduled", // Agendada
+    "confirmed", // Confirmada
+    "rescheduled", // Reagendada
+    "completed", // Realizada
+    "cancelled", // Cancelada
+    "postponed" // Adiada
+  ]).default("scheduled").notNull(),
+  
+  // Resultado
+  outcome: text("outcome"), // Resultado da audiência
+  nextSteps: text("nextSteps"), // Próximos passos
+  
+  // Alertas
+  alert7DaysSent: boolean("alert7DaysSent").default(false),
+  alert3DaysSent: boolean("alert3DaysSent").default(false),
+  alert1DaySent: boolean("alert1DaySent").default(false),
+  
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LawsuitHearing = typeof lawsuitHearings.$inferSelect;
+export type InsertLawsuitHearing = typeof lawsuitHearings.$inferInsert;
+
+// ============ LAWSUIT WITNESSES (Testemunhas) ============
+export const lawsuitWitnesses = mysqlTable("lawsuit_witnesses", {
+  id: int("id").autoincrement().primaryKey(),
+  lawsuitId: int("lawsuitId").references(() => laborLawsuits.id).notNull(),
+  hearingId: int("hearingId").references(() => lawsuitHearings.id),
+  
+  name: varchar("name", { length: 200 }).notNull(),
+  cpf: varchar("cpf", { length: 14 }),
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email", { length: 320 }),
+  
+  // Se é funcionário da empresa
+  employeeId: int("employeeId").references(() => employees.id),
+  
+  role: mysqlEnum("role", [
+    "company_witness", // Testemunha da empresa
+    "claimant_witness", // Testemunha do reclamante
+    "expert" // Perito
+  ]).default("company_witness").notNull(),
+  
+  relationship: varchar("relationship", { length: 100 }), // Relação com as partes
+  expectedTestimony: text("expectedTestimony"), // O que se espera do depoimento
+  actualTestimony: text("actualTestimony"), // Resumo do depoimento dado
+  
+  status: mysqlEnum("status", [
+    "pending", // Pendente convocação
+    "summoned", // Convocada
+    "confirmed", // Confirmada presença
+    "testified", // Depôs
+    "absent", // Faltou
+    "excused" // Dispensada
+  ]).default("pending").notNull(),
+  
+  summonedAt: timestamp("summonedAt"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type LawsuitWitness = typeof lawsuitWitnesses.$inferSelect;
+export type InsertLawsuitWitness = typeof lawsuitWitnesses.$inferInsert;
+
+// ============ LAWSUIT DOCUMENTS (Documentos do Processo) ============
+export const lawsuitDocuments = mysqlTable("lawsuit_documents", {
+  id: int("id").autoincrement().primaryKey(),
+  lawsuitId: int("lawsuitId").references(() => laborLawsuits.id).notNull(),
+  hearingId: int("hearingId").references(() => lawsuitHearings.id),
+  
+  documentType: mysqlEnum("documentType", [
+    "initial_petition", // Petição inicial
+    "defense", // Contestação
+    "reply", // Réplica
+    "evidence", // Prova
+    "witness_list", // Rol de testemunhas
+    "expert_report", // Laudo pericial
+    "appeal", // Recurso
+    "sentence", // Sentença
+    "settlement", // Acordo
+    "subpoena", // Intimação
+    "court_order", // Despacho
+    "other"
+  ]).notNull(),
+  
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileUrl: text("fileUrl").notNull(),
+  fileKey: varchar("fileKey", { length: 255 }).notNull(),
+  mimeType: varchar("mimeType", { length: 100 }),
+  fileSize: int("fileSize"),
+  
+  // Vinculação com documento do funcionário
+  linkedDocumentId: int("linkedDocumentId").references(() => documents.id),
+  linkedRecurringDocId: int("linkedRecurringDocId").references(() => recurringDocuments.id),
+  
+  receivedAt: timestamp("receivedAt"), // Data de recebimento (se intimação)
+  dueDate: timestamp("dueDate"), // Prazo (se aplicável)
+  
+  uploadedBy: int("uploadedBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type LawsuitDocument = typeof lawsuitDocuments.$inferSelect;
+export type InsertLawsuitDocument = typeof lawsuitDocuments.$inferInsert;
+
+// ============ LAWSUIT DEADLINES (Prazos Processuais) ============
+export const lawsuitDeadlines = mysqlTable("lawsuit_deadlines", {
+  id: int("id").autoincrement().primaryKey(),
+  lawsuitId: int("lawsuitId").references(() => laborLawsuits.id).notNull(),
+  
+  deadlineType: mysqlEnum("deadlineType", [
+    "defense", // Contestação
+    "reply", // Réplica
+    "evidence", // Juntada de provas
+    "witness_list", // Rol de testemunhas
+    "appeal", // Recurso
+    "counter_reasons", // Contrarrazões
+    "manifestation", // Manifestação
+    "payment", // Pagamento
+    "other"
+  ]).notNull(),
+  
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  
+  startDate: timestamp("startDate").notNull(), // Início do prazo
+  dueDate: timestamp("dueDate").notNull(), // Vencimento
+  businessDaysOnly: boolean("businessDaysOnly").default(true), // Conta apenas dias úteis
+  
+  status: mysqlEnum("status", [
+    "pending", // Pendente
+    "in_progress", // Em andamento
+    "completed", // Cumprido
+    "missed", // Perdido
+    "extended" // Prorrogado
+  ]).default("pending").notNull(),
+  
+  completedAt: timestamp("completedAt"),
+  completedBy: int("completedBy").references(() => users.id),
+  
+  // Alertas
+  alert7DaysSent: boolean("alert7DaysSent").default(false),
+  alert3DaysSent: boolean("alert3DaysSent").default(false),
+  alert1DaySent: boolean("alert1DaySent").default(false),
+  
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LawsuitDeadline = typeof lawsuitDeadlines.$inferSelect;
+export type InsertLawsuitDeadline = typeof lawsuitDeadlines.$inferInsert;
+
+// ============ LAWSUIT MOVEMENTS (Movimentações do Processo) ============
+export const lawsuitMovements = mysqlTable("lawsuit_movements", {
+  id: int("id").autoincrement().primaryKey(),
+  lawsuitId: int("lawsuitId").references(() => laborLawsuits.id).notNull(),
+  
+  movementDate: timestamp("movementDate").notNull(),
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description"),
+  
+  source: mysqlEnum("source", [
+    "manual", // Inserido manualmente
+    "escavador", // Via API Escavador
+    "email", // Via email do tribunal
+    "datajud" // Via DataJud
+  ]).default("manual").notNull(),
+  
+  externalId: varchar("externalId", { length: 100 }), // ID na fonte externa
+  rawData: json("rawData"), // Dados brutos da fonte
+  
+  isImportant: boolean("isImportant").default(false),
+  requiresAction: boolean("requiresAction").default(false),
+  actionTaken: text("actionTaken"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type LawsuitMovement = typeof lawsuitMovements.$inferSelect;
+export type InsertLawsuitMovement = typeof lawsuitMovements.$inferInsert;
+
+// ============ LAWSUIT FINANCIAL (Financeiro do Processo) ============
+export const lawsuitFinancial = mysqlTable("lawsuit_financial", {
+  id: int("id").autoincrement().primaryKey(),
+  lawsuitId: int("lawsuitId").references(() => laborLawsuits.id).notNull(),
+  
+  transactionType: mysqlEnum("transactionType", [
+    "court_fee", // Custas processuais
+    "lawyer_fee", // Honorários advocatícios
+    "expert_fee", // Honorários periciais
+    "settlement_payment", // Pagamento de acordo
+    "condemnation_payment", // Pagamento de condenação
+    "deposit", // Depósito recursal
+    "other_expense", // Outras despesas
+    "reimbursement" // Reembolso
+  ]).notNull(),
+  
+  description: varchar("description", { length: 300 }).notNull(),
+  amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
+  
+  dueDate: timestamp("dueDate"),
+  paidDate: timestamp("paidDate"),
+  
+  status: mysqlEnum("status", [
+    "pending", // Pendente
+    "paid", // Pago
+    "overdue", // Atrasado
+    "cancelled" // Cancelado
+  ]).default("pending").notNull(),
+  
+  installmentNumber: int("installmentNumber"), // Número da parcela (se acordo parcelado)
+  totalInstallments: int("totalInstallments"), // Total de parcelas
+  
+  receiptUrl: text("receiptUrl"), // Comprovante
+  receiptKey: varchar("receiptKey", { length: 255 }),
+  
+  notes: text("notes"),
+  createdBy: int("createdBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LawsuitFinancial = typeof lawsuitFinancial.$inferSelect;
+export type InsertLawsuitFinancial = typeof lawsuitFinancial.$inferInsert;
+
+// ============ COURT COMMUNICATIONS (Comunicações do Tribunal) ============
+export const courtCommunications = mysqlTable("court_communications", {
+  id: int("id").autoincrement().primaryKey(),
+  lawsuitId: int("lawsuitId").references(() => laborLawsuits.id),
+  
+  communicationType: mysqlEnum("communicationType", [
+    "email", // Email do tribunal
+    "official_diary", // Publicação no diário oficial
+    "subpoena", // Intimação
+    "notification", // Notificação
+    "other"
+  ]).notNull(),
+  
+  subject: varchar("subject", { length: 500 }),
+  content: text("content"),
+  
+  senderEmail: varchar("senderEmail", { length: 320 }),
+  receivedAt: timestamp("receivedAt").notNull(),
+  
+  // Arquivo anexo
+  attachmentUrl: text("attachmentUrl"),
+  attachmentKey: varchar("attachmentKey", { length: 255 }),
+  attachmentName: varchar("attachmentName", { length: 255 }),
+  
+  // Processamento
+  isProcessed: boolean("isProcessed").default(false),
+  processedAt: timestamp("processedAt"),
+  processedBy: int("processedBy").references(() => users.id),
+  
+  // Extração automática
+  extractedProcessNumber: varchar("extractedProcessNumber", { length: 30 }),
+  extractedDeadline: timestamp("extractedDeadline"),
+  extractedData: json("extractedData"),
+  
+  status: mysqlEnum("status", [
+    "unread", // Não lida
+    "read", // Lida
+    "processed", // Processada
+    "archived" // Arquivada
+  ]).default("unread").notNull(),
+  
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CourtCommunication = typeof courtCommunications.$inferSelect;
+export type InsertCourtCommunication = typeof courtCommunications.$inferInsert;
+
+// ============ ESCAVADOR CONFIG (Configuração da API) ============
+export const escavadorConfig = mysqlTable("escavador_config", {
+  id: int("id").autoincrement().primaryKey(),
+  apiKey: varchar("apiKey", { length: 255 }),
+  isActive: boolean("isActive").default(false),
+  lastSyncAt: timestamp("lastSyncAt"),
+  syncFrequencyHours: int("syncFrequencyHours").default(24),
+  monitoredCnpj: varchar("monitoredCnpj", { length: 20 }),
+  monitoredCompanyName: varchar("monitoredCompanyName", { length: 200 }),
+  webhookUrl: text("webhookUrl"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EscavadorConfig = typeof escavadorConfig.$inferSelect;
+export type InsertEscavadorConfig = typeof escavadorConfig.$inferInsert;

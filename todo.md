@@ -171,3 +171,72 @@
 - [x] Detalhes do funcionário: Mostrar dados completos (admissão, cargo, dados pessoais, horário, departamento)
 - [x] Envio de documentos para assinatura: Usar email do funcionário cadastrado, solicitar quando ausente
 
+
+## Fase 5 - Módulo de Audiências Judiciais
+
+### Cadastro de Processos Trabalhistas
+- [x] Número do processo (formato CNJ), vara, tribunal
+- [x] Reclamante (ex-funcionário ou atual) - vinculado ao cadastro de funcionários
+- [x] Tipo de ação (trabalhista, acidente de trabalho, assédio, dano moral, etc.)
+- [x] Advogado responsável, escritório
+- [x] Status do processo (ativo, arquivado, acordo, condenação, absolvição)
+- [x] Integração com API do Escavador para busca automática
+
+### Gestão de Audiências
+- [x] Calendário visual com filtros por tipo/status
+- [x] Data, hora, local, tipo (inicial, instrução, julgamento, conciliação)
+- [ ] Alertas automáticos (7 dias, 3 dias, 1 dia antes)
+- [x] Vinculação com processo
+
+### Documentação do Processo
+- [x] Upload de petições, contestações, provas
+- [x] Vinculação com documentos do funcionário (ponto, holerite, contratos)
+- [ ] Checklist de documentos necessários por tipo de audiência
+- [x] Organização por pastas/categorias
+
+### Preparação para Audiência
+- [x] Lista de testemunhas convocadas
+- [x] Pontos-chave para defesa
+- [ ] Histórico de ocorrências do funcionário
+- [x] Anotações e estratégia
+
+### Prazos Processuais
+- [x] Controle de prazos para contestação, recursos, manifestações
+- [ ] Alertas automáticos de prazos vencendo
+- [ ] Cálculo considerando dias úteis/feriados forenses
+
+### Comunicações do Tribunal
+- [x] Caixa de entrada para emails/intimações
+- [x] Upload manual de publicações do diário oficial
+- [x] Vinculação automática com processo correspondente
+- [x] Preparação para integração com Escavador
+
+### Histórico de Movimentações
+- [x] Timeline completa do processo
+- [x] Sincronização via Escavador (quando API key configurada)
+- [ ] Alertas de novas movimentações
+
+### Acompanhamento Financeiro
+- [x] Valor da causa, provisão contábil
+- [x] Custas processuais, honorários advocatícios
+- [x] Resultado financeiro (acordo, condenação, absolvição)
+- [x] Controle de parcelas de acordos
+
+### Gestão de Acordos
+- [x] Simulador de acordo vs. risco de condenação
+- [x] Registro de propostas e contrapropostas
+- [x] Controle de parcelas e alertas de vencimento
+
+### Dashboard Jurídico
+- [x] Visão geral de processos ativos
+- [x] Próximas audiências (7 dias)
+- [x] Prazos críticos
+- [x] Provisão total do passivo trabalhista
+- [x] Métricas de sucesso/insucesso
+
+### Relatórios
+- [x] Processos por departamento/período
+- [x] Taxa de sucesso nas defesas
+- [x] Custo total com passivo trabalhista
+- [ ] Exportação em PDF/Excel
+
