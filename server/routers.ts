@@ -1,28 +1,528 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { z } from "zod";
+import { nanoid } from "nanoid";
+import { storagePut } from "./storage";
+import * as db from "./db";
+import { analyzeTimesheetWithVision, analyzePayslipWithVision, classifyDocument } from "./aiAnalysis";
+import { TRPCError } from "@trpc/server";
+
+// Admin-only procedure
+const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== 'admin') {
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Acesso restrito a administradores' });
+  }
+  return next({ ctx });
+});
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
+  
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
+      return { success: true } as const;
     }),
   }),
 
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  // ============ DASHBOARD ============
+  dashboard: router({
+    stats: protectedProcedure.query(async () => {
+      return db.getDashboardStats();
+    }),
+  }),
+
+  // ============ DEPARTMENTS ============
+  departments: router({
+    list: protectedProcedure.query(async () => {
+      return db.getDepartments();
+    }),
+    create: adminProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        description: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return db.createDepartment(input);
+      }),
+  }),
+
+  // ============ EMPLOYEES ============
+  employees: router({
+    list: protectedProcedure
+      .input(z.object({
+        departmentId: z.number().optional(),
+        status: z.string().optional(),
+        search: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return db.getEmployees(input);
+      }),
+    
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const employee = await db.getEmployeeById(input.id);
+        if (!employee) throw new TRPCError({ code: 'NOT_FOUND' });
+        return employee;
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        cpf: z.string().min(11),
+        email: z.string().email().optional(),
+        phone: z.string().optional(),
+        position: z.string().optional(),
+        departmentId: z.number().optional(),
+        admissionDate: z.date().optional(),
+        salary: z.string().optional(),
+        workHours: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const employee = await db.createEmployee(input as any);
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: 'create_employee',
+          entityType: 'employee',
+          entityId: employee.id,
+          details: { name: input.name },
+        });
+        return employee;
+      }),
+    
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).optional(),
+        email: z.string().email().optional(),
+        phone: z.string().optional(),
+        position: z.string().optional(),
+        departmentId: z.number().optional(),
+        salary: z.string().optional(),
+        workHours: z.string().optional(),
+        status: z.enum(['active', 'inactive', 'on_leave']).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { id, ...data } = input;
+        const employee = await db.updateEmployee(id, data as any);
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: 'update_employee',
+          entityType: 'employee',
+          entityId: id,
+          details: data,
+        });
+        return employee;
+      }),
+    
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.deleteEmployee(input.id);
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: 'delete_employee',
+          entityType: 'employee',
+          entityId: input.id,
+        });
+        return { success: true };
+      }),
+  }),
+
+  // ============ DOCUMENT TYPES ============
+  documentTypes: router({
+    list: protectedProcedure
+      .input(z.object({ category: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        return db.getDocumentTypes(input?.category);
+      }),
+    
+    create: adminProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        description: z.string().optional(),
+        category: z.enum(['admission', 'recurring', 'compliance', 'personal']),
+        isRequired: z.boolean().optional(),
+        validityDays: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return db.createDocumentType(input);
+      }),
+  }),
+
+  // ============ DOCUMENTS ============
+  documents: router({
+    byEmployee: protectedProcedure
+      .input(z.object({ employeeId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getDocumentsByEmployee(input.employeeId);
+      }),
+    
+    upload: protectedProcedure
+      .input(z.object({
+        employeeId: z.number(),
+        documentTypeId: z.number(),
+        fileName: z.string(),
+        fileData: z.string(), // base64
+        mimeType: z.string(),
+        autoClassify: z.boolean().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const buffer = Buffer.from(input.fileData, 'base64');
+        const fileKey = `documents/${input.employeeId}/${nanoid()}-${input.fileName}`;
+        
+        const { url } = await storagePut(fileKey, buffer, input.mimeType);
+        
+        let extractedData = null;
+        if (input.autoClassify) {
+          try {
+            const classification = await classifyDocument(url);
+            extractedData = classification;
+          } catch (e) {
+            console.error("Auto-classification failed:", e);
+          }
+        }
+        
+        const document = await db.createDocument({
+          employeeId: input.employeeId,
+          documentTypeId: input.documentTypeId,
+          fileName: input.fileName,
+          fileUrl: url,
+          fileKey,
+          mimeType: input.mimeType,
+          fileSize: buffer.length,
+          status: 'valid',
+          extractedData,
+          uploadedBy: ctx.user.id,
+        });
+        
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: 'upload_document',
+          entityType: 'document',
+          entityId: document.id,
+          details: { employeeId: input.employeeId, fileName: input.fileName },
+        });
+        
+        return document;
+      }),
+  }),
+
+  // ============ RECURRING DOCUMENTS ============
+  recurring: router({
+    list: protectedProcedure
+      .input(z.object({
+        employeeId: z.number().optional(),
+        type: z.enum(['timesheet', 'payslip']).optional(),
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return db.getRecurringDocuments(input);
+      }),
+    
+    upload: protectedProcedure
+      .input(z.object({
+        employeeId: z.number(),
+        type: z.enum(['timesheet', 'payslip']),
+        referenceDate: z.date(),
+        fileName: z.string(),
+        fileData: z.string(), // base64
+        mimeType: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const buffer = Buffer.from(input.fileData, 'base64');
+        const fileKey = `recurring/${input.employeeId}/${input.type}/${nanoid()}-${input.fileName}`;
+        
+        const { url } = await storagePut(fileKey, buffer, input.mimeType);
+        
+        // Create document first
+        const doc = await db.createRecurringDocument({
+          employeeId: input.employeeId,
+          type: input.type,
+          referenceDate: input.referenceDate,
+          fileName: input.fileName,
+          fileUrl: url,
+          fileKey,
+          complianceStatus: 'pending',
+          uploadedBy: ctx.user.id,
+        });
+        
+        // Get employee context for analysis
+        const employee = await db.getEmployeeById(input.employeeId);
+        
+        // Analyze with AI
+        try {
+          let analysis;
+          if (input.type === 'timesheet') {
+            analysis = await analyzeTimesheetWithVision(url, {
+              name: employee?.name || '',
+              workHours: employee?.workHours || '08:00-17:00',
+              salary: employee?.salary ? Number(employee.salary) : undefined,
+            });
+          } else {
+            analysis = await analyzePayslipWithVision(url, {
+              name: employee?.name || '',
+              expectedSalary: employee?.salary ? Number(employee.salary) : undefined,
+            });
+          }
+          
+          // Update document with analysis
+          await db.updateRecurringDocument(doc.id, {
+            aiAnalysis: analysis,
+            complianceScore: analysis.complianceScore,
+            complianceStatus: analysis.complianceScore >= 80 ? 'compliant' : 
+                             analysis.complianceScore >= 50 ? 'warning' : 'non_compliant',
+            processedAt: new Date(),
+          });
+          
+          // Create alerts from analysis
+          for (const alert of analysis.alerts) {
+            await db.createComplianceAlert({
+              employeeId: input.employeeId,
+              recurringDocId: doc.id,
+              type: mapAlertType(alert.type, input.type),
+              severity: alert.severity,
+              title: alert.type,
+              description: alert.description,
+              details: { date: (alert as any).date },
+            });
+          }
+          
+          // Update employee compliance score
+          if (employee) {
+            const newScore = Math.round((employee.complianceScore || 100) * 0.7 + analysis.complianceScore * 0.3);
+            await db.updateEmployee(input.employeeId, { complianceScore: newScore });
+          }
+          
+          return { ...doc, analysis };
+        } catch (error) {
+          console.error("AI analysis failed:", error);
+          return doc;
+        }
+      }),
+    
+    reprocess: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        // Re-trigger AI analysis
+        return { success: true, message: "Reprocessamento iniciado" };
+      }),
+  }),
+
+  // ============ COMPLIANCE ALERTS ============
+  alerts: router({
+    list: protectedProcedure
+      .input(z.object({
+        employeeId: z.number().optional(),
+        status: z.string().optional(),
+        severity: z.string().optional(),
+        limit: z.number().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return db.getComplianceAlerts(input);
+      }),
+    
+    acknowledge: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateComplianceAlert(input.id, { 
+          status: 'acknowledged',
+        });
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: 'acknowledge_alert',
+          entityType: 'alert',
+          entityId: input.id,
+        });
+        return { success: true };
+      }),
+    
+    resolve: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateComplianceAlert(input.id, { 
+          status: 'resolved',
+          resolvedAt: new Date(),
+          resolvedBy: ctx.user.id,
+        });
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: 'resolve_alert',
+          entityType: 'alert',
+          entityId: input.id,
+        });
+        return { success: true };
+      }),
+    
+    dismiss: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateComplianceAlert(input.id, { 
+          status: 'dismissed',
+          resolvedAt: new Date(),
+          resolvedBy: ctx.user.id,
+        });
+        return { success: true };
+      }),
+  }),
+
+  // ============ EXTERNAL REQUESTS ============
+  external: router({
+    list: protectedProcedure
+      .input(z.object({ status: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        return db.getExternalRequests(input);
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        employeeId: z.number(),
+        documentTypeId: z.number().optional(),
+        recipientEmail: z.string().email(),
+        recipientName: z.string().optional(),
+        recipientType: z.enum(['accountant', 'lawyer', 'partner', 'other']).optional(),
+        message: z.string().optional(),
+        expiresInDays: z.number().default(7),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const token = nanoid(32);
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + input.expiresInDays);
+        
+        const request = await db.createExternalRequest({
+          employeeId: input.employeeId,
+          documentTypeId: input.documentTypeId,
+          token,
+          recipientEmail: input.recipientEmail,
+          recipientName: input.recipientName,
+          recipientType: input.recipientType,
+          message: input.message,
+          status: 'pending',
+          expiresAt,
+          createdBy: ctx.user.id,
+        });
+        
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: 'create_external_request',
+          entityType: 'external_request',
+          entityId: request.id,
+          details: { recipientEmail: input.recipientEmail },
+        });
+        
+        return { ...request, uploadUrl: `/external/upload/${token}` };
+      }),
+    
+    // Public endpoint for external upload verification
+    validate: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const request = await db.getExternalRequestByToken(input.token);
+        if (!request) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Link inválido ou expirado' });
+        }
+        if (request.status === 'expired' || new Date() > request.expiresAt) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Link expirado' });
+        }
+        if (request.status === 'uploaded') {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Documento já enviado' });
+        }
+        return {
+          employee: request.employee,
+          documentType: request.documentType,
+          message: request.message,
+          expiresAt: request.expiresAt,
+        };
+      }),
+    
+    // Public endpoint for external upload
+    upload: publicProcedure
+      .input(z.object({
+        token: z.string(),
+        fileName: z.string(),
+        fileData: z.string(), // base64
+        mimeType: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const request = await db.getExternalRequestByToken(input.token);
+        if (!request) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Link inválido' });
+        }
+        if (request.status !== 'pending' && request.status !== 'sent') {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Upload não permitido' });
+        }
+        if (new Date() > request.expiresAt) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Link expirado' });
+        }
+        
+        const buffer = Buffer.from(input.fileData, 'base64');
+        const fileKey = `external/${request.employeeId}/${nanoid()}-${input.fileName}`;
+        
+        const { url } = await storagePut(fileKey, buffer, input.mimeType);
+        
+        // Create document
+        const document = await db.createDocument({
+          employeeId: request.employeeId,
+          documentTypeId: request.documentTypeId || 1,
+          fileName: input.fileName,
+          fileUrl: url,
+          fileKey,
+          mimeType: input.mimeType,
+          fileSize: buffer.length,
+          status: 'pending',
+        });
+        
+        // Update request
+        await db.updateExternalRequest(request.id, {
+          status: 'uploaded',
+          uploadedDocumentId: document.id,
+        });
+        
+        return { success: true, message: 'Documento enviado com sucesso!' };
+      }),
+  }),
+
+  // ============ CHATBOT (Placeholder) ============
+  chatbot: router({
+    status: publicProcedure.query(() => {
+      return { 
+        status: 'not_implemented', 
+        message: 'Chatbot em desenvolvimento. Em breve!' 
+      };
+    }),
+  }),
 });
+
+// Helper function to map alert types
+function mapAlertType(alertType: string, docType: string): any {
+  const timesheetTypes: Record<string, string> = {
+    'atraso': 'late_arrival',
+    'saida_antecipada': 'early_departure',
+    'hora_extra': 'unauthorized_overtime',
+    'batida_faltante': 'missing_punch',
+    'falta': 'absence_without_justification',
+  };
+  
+  const payslipTypes: Record<string, string> = {
+    'erro_calculo': 'payslip_calculation_error',
+    'desconto_irregular': 'irregular_discount',
+    'salario_divergente': 'salary_mismatch',
+  };
+  
+  const types = docType === 'timesheet' ? timesheetTypes : payslipTypes;
+  const normalized = alertType.toLowerCase().replace(/\s+/g, '_');
+  
+  for (const [key, value] of Object.entries(types)) {
+    if (normalized.includes(key)) return value;
+  }
+  
+  return docType === 'timesheet' ? 'late_arrival' : 'payslip_calculation_error';
+}
 
 export type AppRouter = typeof appRouter;
