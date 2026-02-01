@@ -30,7 +30,9 @@ import {
   AlertTriangle, 
   Mail,
   MessageCircle,
-  Shield
+  Shield,
+  BarChart3,
+  Clock
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -41,7 +43,9 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Users, label: "Funcionários", path: "/employees" },
   { icon: FileText, label: "Docs Recorrentes", path: "/recurring" },
+  { icon: Clock, label: "Importar Ponto", path: "/timeclock" },
   { icon: AlertTriangle, label: "Alertas", path: "/alerts" },
+  { icon: BarChart3, label: "Relatórios", path: "/reports" },
   { icon: Mail, label: "Solicitações Externas", path: "/external" },
   { icon: MessageCircle, label: "Chatbot", path: "/chatbot", disabled: true },
 ];

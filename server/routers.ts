@@ -8,6 +8,9 @@ import { storagePut } from "./storage";
 import * as db from "./db";
 import { analyzeTimesheetWithVision, analyzePayslipWithVision, classifyDocument } from "./aiAnalysis";
 import { TRPCError } from "@trpc/server";
+import { sendEmail, emailTemplates, getEmailLogs } from "./emailService";
+import * as reportService from "./reportService";
+import * as timeclockService from "./timeclockService";
 
 // Admin-only procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -496,6 +499,219 @@ export const appRouter = router({
         message: 'Chatbot em desenvolvimento. Em breve!' 
       };
     }),
+  }),
+
+  // ============ EMAIL SERVICE ============
+  email: router({
+    send: protectedProcedure
+      .input(z.object({
+        to: z.string().email(),
+        subject: z.string(),
+        html: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await sendEmail(input);
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: 'send_email',
+          entityType: 'email',
+          details: { to: input.to, subject: input.subject, success: result.success },
+        });
+        return result;
+      }),
+    
+    logs: protectedProcedure.query(() => {
+      return getEmailLogs();
+    }),
+    
+    sendExternalRequest: protectedProcedure
+      .input(z.object({
+        requestId: z.number(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const request = await db.getExternalRequests({ status: 'pending' });
+        const req = request?.find(r => r.id === input.requestId);
+        if (!req) throw new TRPCError({ code: 'NOT_FOUND' });
+        
+        const employee = await db.getEmployeeById(req.employeeId);
+        const baseUrl = process.env.VITE_APP_URL || 'https://hr-docs-pro.manus.space';
+        
+        const emailContent = emailTemplates.externalRequest({
+          recipientName: req.recipientName || 'Prezado(a)',
+          employeeName: employee?.name || 'Funcionário',
+          documentType: (req as any).documentType?.name,
+          message: req.message || undefined,
+          uploadUrl: `${baseUrl}/external/upload/${req.token}`,
+          expiresAt: req.expiresAt,
+        });
+        
+        const result = await sendEmail({
+          to: req.recipientEmail,
+          ...emailContent,
+        });
+        
+        if (result.success) {
+          await db.updateExternalRequest(req.id, { status: 'sent' });
+        }
+        
+        return result;
+      }),
+  }),
+
+  // ============ REPORTS ============
+  reports: router({
+    generate: protectedProcedure
+      .input(z.object({
+        departmentId: z.number().optional(),
+      }).optional())
+      .mutation(async ({ input }) => {
+        const data = await reportService.generateComplianceReport(input);
+        const { url, key } = await reportService.saveReportToStorage(data);
+        return { data, url, key };
+      }),
+    
+    preview: protectedProcedure
+      .input(z.object({
+        departmentId: z.number().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return reportService.generateComplianceReport(input);
+      }),
+    
+    sendByEmail: protectedProcedure
+      .input(z.object({
+        recipients: z.array(z.string().email()),
+        recipientName: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await reportService.sendComplianceReport(
+          input.recipients,
+          input.recipientName
+        );
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: 'send_report',
+          entityType: 'report',
+          details: { recipients: input.recipients, success: result.success },
+        });
+        return result;
+      }),
+    
+    // Report schedules
+    schedules: router({
+      list: protectedProcedure.query(() => {
+        return reportService.getReportSchedules();
+      }),
+      
+      create: adminProcedure
+        .input(z.object({
+          name: z.string(),
+          type: z.enum(['daily', 'weekly', 'monthly']),
+          recipients: z.array(z.string().email()),
+          enabled: z.boolean().default(true),
+        }))
+        .mutation(({ input }) => {
+          return reportService.createReportSchedule(input);
+        }),
+      
+      update: adminProcedure
+        .input(z.object({
+          id: z.string(),
+          enabled: z.boolean().optional(),
+          recipients: z.array(z.string().email()).optional(),
+        }))
+        .mutation(({ input }) => {
+          const { id, ...updates } = input;
+          return reportService.updateReportSchedule(id, updates);
+        }),
+      
+      delete: adminProcedure
+        .input(z.object({ id: z.string() }))
+        .mutation(({ input }) => {
+          return reportService.deleteReportSchedule(input.id);
+        }),
+    }),
+  }),
+
+  // ============ TIMECLOCK INTEGRATION ============
+  timeclock: router({
+    config: router({
+      get: protectedProcedure.query(() => {
+        return timeclockService.getTimeclockConfig();
+      }),
+      
+      update: adminProcedure
+        .input(z.object({
+          system: z.enum(['generic', 'dimep', 'henry', 'secullum', 'topdata', 'manual']).optional(),
+          apiUrl: z.string().optional(),
+          apiKey: z.string().optional(),
+          enabled: z.boolean().optional(),
+          syncInterval: z.number().optional(),
+        }))
+        .mutation(({ input }) => {
+          return timeclockService.updateTimeclockConfig(input);
+        }),
+    }),
+    
+    // Import from file (batch)
+    import: protectedProcedure
+      .input(z.object({
+        fileData: z.string(), // base64
+        format: z.enum(['generic', 'dimep', 'henry', 'secullum', 'topdata', 'manual']),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const content = Buffer.from(input.fileData, 'base64').toString('utf-8');
+        const records = timeclockService.parseTimeclockFile(content, input.format);
+        const result = await timeclockService.importTimeclockRecords(records, ctx.user.id);
+        
+        await db.createAuditLog({
+          userId: ctx.user.id,
+          action: 'import_timeclock',
+          entityType: 'timeclock',
+          details: { 
+            format: input.format, 
+            total: result.totalRecords, 
+            imported: result.imported,
+            errors: result.errors.length,
+          },
+        });
+        
+        return result;
+      }),
+    
+    // Manual upload for single employee
+    uploadManual: protectedProcedure
+      .input(z.object({
+        employeeId: z.number(),
+        referenceDate: z.date(),
+        fileName: z.string(),
+        fileData: z.string(), // base64
+        mimeType: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const buffer = Buffer.from(input.fileData, 'base64');
+        return timeclockService.processManualTimesheetUpload(
+          { data: buffer, name: input.fileName, mimeType: input.mimeType },
+          input.employeeId,
+          input.referenceDate,
+          ctx.user.id
+        );
+      }),
+    
+    // Parse preview (without importing)
+    preview: protectedProcedure
+      .input(z.object({
+        fileData: z.string(),
+        format: z.enum(['generic', 'dimep', 'henry', 'secullum', 'topdata', 'manual']),
+      }))
+      .mutation(({ input }) => {
+        const content = Buffer.from(input.fileData, 'base64').toString('utf-8');
+        const records = timeclockService.parseTimeclockFile(content, input.format);
+        return {
+          totalRecords: records.length,
+          preview: records.slice(0, 10),
+        };
+      }),
   }),
 });
 

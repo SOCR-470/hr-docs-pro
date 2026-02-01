@@ -66,8 +66,28 @@
 - [x] Testes unitários para routers principais
 - [x] Teste de autenticação/logout
 
+## Melhorias em Desenvolvimento
+
+### Integração SendGrid (Emails)
+- [x] Configurar serviço SendGrid no backend
+- [x] Envio de email para solicitações externas
+- [x] Templates de email profissionais
+- [x] Log de emails enviados com timestamp
+
+### Relatórios Automáticos de Compliance
+- [x] Geração de relatório PDF com métricas
+- [x] Agendamento de envio (diário/semanal/mensal)
+- [x] Relatório por departamento
+- [x] Histórico de relatórios gerados
+
+### Integração Ponto Eletrônico
+- [x] API para importação automática de ponto
+- [x] Upload manual como alternativa
+- [x] Processamento em lote de arquivos
+- [x] Validação e reconciliação de dados
+
 ## Pendente para Futuro
-- [ ] Relatórios automáticos por email
-- [ ] Integração com sistemas externos (ponto, folha, AD)
 - [ ] Backup automático diário
 - [ ] Implementação completa do chatbot
+- [ ] Integração com folha de pagamento
+- [ ] Integração com Active Directory

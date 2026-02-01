@@ -12,6 +12,8 @@ import RecurringDocs from "./pages/RecurringDocs";
 import Alerts from "./pages/Alerts";
 import ExternalRequests from "./pages/ExternalRequests";
 import ExternalUpload from "./pages/ExternalUpload";
+import Reports from "./pages/Reports";
+import TimeclockImport from "./pages/TimeclockImport";
 
 function Router() {
   return (
@@ -50,6 +52,16 @@ function Router() {
       <Route path="/external">
         <DashboardLayout>
           <ExternalRequests />
+        </DashboardLayout>
+      </Route>
+      <Route path="/reports">
+        <DashboardLayout>
+          <Reports />
+        </DashboardLayout>
+      </Route>
+      <Route path="/timeclock">
+        <DashboardLayout>
+          <TimeclockImport />
         </DashboardLayout>
       </Route>
       
