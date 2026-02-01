@@ -91,3 +91,50 @@
 - [ ] Implementação completa do chatbot
 - [ ] Integração com folha de pagamento
 - [ ] Integração com Active Directory
+
+## Novas Melhorias (Fase 2)
+
+### Organização por Departamento
+- [ ] Estrutura de pastas: Departamento > Funcionário
+- [ ] Navegação hierárquica no frontend
+- [ ] Filtros e busca por departamento
+
+### Templates de Pacotes Documentais
+- [x] CRUD de templates por cargo/função
+- [x] Sistema de herança (template base + específico)
+- [x] Configuração de obrigatoriedade, vencimento e tipo de obtenção
+- [ ] Aplicação automática ao cadastrar funcionário
+- [x] Dashboard de progresso por template
+
+### Envio de Documentos para Terceiros
+- [x] Seleção via checkbox de documentos da pasta
+- [x] Geração de link seguro (sem acesso ao sistema)
+- [x] Envio por email com validade configurável
+- [x] Log de compartilhamentos
+
+### Módulo LGPD (Consentimento)
+- [x] Termo de consentimento único (não granular)
+- [x] Envio por email com link para assinatura
+- [x] Validação: nome + CPF + data nascimento + código email
+- [x] Opção de impressão para assinatura física
+- [x] Registro com metadados (IP, data/hora, hash)
+- [ ] Comprovante PDF gerado automaticamente
+
+### Geração de Contratos e Documentos
+- [x] Modelos auto-preenchidos com dados do funcionário
+- [x] Contrato de trabalho, termo de confidencialidade, etc.
+- [x] Envio para assinatura eletrônica
+- [x] Opção de impressão
+- [ ] Nomenclatura automática: [TIPO]_[NOME]_[DATA].pdf
+
+### Análise Preditiva
+- [x] Score de risco (0-100) por funcionário
+- [x] Previsão de problemas nos próximos 30 dias
+- [x] Detecção de padrões de comportamento
+- [x] Alertas preditivos
+
+### Análise Comparativa
+- [x] Evolução individual mês a mês
+- [x] Benchmark entre departamentos
+- [x] Comparativo holerite vs. contrato
+- [x] Histórico de alertas ao longo do tempo

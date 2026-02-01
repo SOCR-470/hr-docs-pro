@@ -15,6 +15,13 @@
       "when": 1769965270608,
       "tag": "0001_rapid_silhouette",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1769972322566,
+      "tag": "0002_panoramic_baron_zemo",
+      "breakpoints": true
     }
   ]
 }

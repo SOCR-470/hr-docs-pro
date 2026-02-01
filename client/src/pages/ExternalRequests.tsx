@@ -78,7 +78,7 @@ export default function ExternalRequests() {
       employeeId: parseInt(newRequest.employeeId),
       recipientEmail: newRequest.recipientEmail,
       recipientName: newRequest.recipientName || undefined,
-      documentTypes: newRequest.documentTypes.length > 0 ? newRequest.documentTypes : undefined,
+      documentTypeId: newRequest.documentTypes.length > 0 ? newRequest.documentTypes[0] : undefined,
       message: newRequest.message || undefined,
       expiresInDays: parseInt(newRequest.expiresInDays),
     });

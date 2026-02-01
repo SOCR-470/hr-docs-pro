@@ -18,6 +18,7 @@ export default function ExternalUpload({ params }: { params?: { token: string } 
   const token = params?.token || window.location.pathname.split('/').pop() || '';
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: request, isLoading, error } = trpc.external.validate.useQuery(
@@ -26,8 +27,8 @@ export default function ExternalUpload({ params }: { params?: { token: string } 
   );
 
   const uploadFile = trpc.external.upload.useMutation({
-    onSuccess: (data) => {
-      setUploadedFiles(prev => [...prev, data.fileName]);
+    onSuccess: () => {
+      setUploadedFiles(prev => [...prev, selectedFileName]);
       toast.success("Documento enviado com sucesso!");
       setIsUploading(false);
     },
@@ -41,6 +42,7 @@ export default function ExternalUpload({ params }: { params?: { token: string } 
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setSelectedFileName(file.name);
     setIsUploading(true);
     const reader = new FileReader();
     reader.onload = () => {

@@ -8,19 +8,16 @@ import DashboardLayout from "./components/DashboardLayout";
 import Home from "./pages/Home";
 import Employees from "./pages/Employees";
 import EmployeeDetail from "./pages/EmployeeDetail";
-import RecurringDocs from "./pages/RecurringDocs";
-import Alerts from "./pages/Alerts";
-import ExternalRequests from "./pages/ExternalRequests";
-import ExternalUpload from "./pages/ExternalUpload";
 import Reports from "./pages/Reports";
 import TimeclockImport from "./pages/TimeclockImport";
+import Templates from "./pages/Templates";
+import Analytics from "./pages/Analytics";
+import DocumentShares from "./pages/DocumentShares";
+import LgpdConsent from "./pages/LgpdConsent";
 
 function Router() {
   return (
     <Switch>
-      {/* Public route for external uploads */}
-      <Route path="/external/upload/:token" component={ExternalUpload} />
-      
       {/* Protected routes with dashboard layout */}
       <Route path="/">
         <DashboardLayout>
@@ -39,19 +36,24 @@ function Router() {
           </DashboardLayout>
         )}
       </Route>
-      <Route path="/recurring">
+      <Route path="/templates">
         <DashboardLayout>
-          <RecurringDocs />
+          <Templates />
         </DashboardLayout>
       </Route>
-      <Route path="/alerts">
+      <Route path="/analytics">
         <DashboardLayout>
-          <Alerts />
+          <Analytics />
         </DashboardLayout>
       </Route>
-      <Route path="/external">
+      <Route path="/shares">
         <DashboardLayout>
-          <ExternalRequests />
+          <DocumentShares />
+        </DashboardLayout>
+      </Route>
+      <Route path="/lgpd">
+        <DashboardLayout>
+          <LgpdConsent />
         </DashboardLayout>
       </Route>
       <Route path="/reports">

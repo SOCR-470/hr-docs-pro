@@ -32,7 +32,10 @@ import {
   MessageCircle,
   Shield,
   BarChart3,
-  Clock
+  Clock,
+  FileStack,
+  TrendingUp,
+  Share2
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -42,12 +45,12 @@ import { Button } from "./ui/button";
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Users, label: "Funcionários", path: "/employees" },
-  { icon: FileText, label: "Docs Recorrentes", path: "/recurring" },
+  { icon: FileStack, label: "Templates", path: "/templates" },
+  { icon: TrendingUp, label: "Analytics", path: "/analytics" },
+  { icon: Share2, label: "Compartilhamentos", path: "/shares" },
+  { icon: Shield, label: "LGPD & Assinaturas", path: "/lgpd" },
   { icon: Clock, label: "Importar Ponto", path: "/timeclock" },
-  { icon: AlertTriangle, label: "Alertas", path: "/alerts" },
   { icon: BarChart3, label: "Relatórios", path: "/reports" },
-  { icon: Mail, label: "Solicitações Externas", path: "/external" },
-  { icon: MessageCircle, label: "Chatbot", path: "/chatbot", disabled: true },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -173,10 +176,6 @@ function DashboardLayoutContent({
   }, [isResizing, setSidebarWidth]);
 
   const handleMenuClick = (item: typeof menuItems[0]) => {
-    if (item.disabled) {
-      // Show toast for disabled items
-      return;
-    }
     setLocation(item.path);
   };
 
@@ -216,22 +215,15 @@ function DashboardLayoutContent({
                     <SidebarMenuButton
                       isActive={isActive}
                       onClick={() => handleMenuClick(item)}
-                      tooltip={item.disabled ? `${item.label} (Em breve)` : item.label}
+                      tooltip={item.label}
                       className={`h-10 transition-all font-normal text-slate-300 hover:text-white hover:bg-slate-800 ${
                         isActive ? "bg-blue-600 text-white hover:bg-blue-700" : ""
-                      } ${item.disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                      }`}
                     >
                       <item.icon
                         className={`h-4 w-4 ${isActive ? "text-white" : "text-slate-400"}`}
                       />
-                      <span className="flex items-center gap-2">
-                        {item.label}
-                        {item.disabled && (
-                          <span className="text-[10px] bg-slate-700 px-1.5 py-0.5 rounded text-slate-400">
-                            Em breve
-                          </span>
-                        )}
-                      </span>
+                      <span>{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );

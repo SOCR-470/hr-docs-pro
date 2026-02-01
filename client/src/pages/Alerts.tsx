@@ -190,7 +190,7 @@ export default function Alerts() {
                         <Button
                           size="sm"
                           className="bg-emerald-600 hover:bg-emerald-700"
-                          onClick={() => resolveAlert.mutate({ id: alert.id, resolution: 'Resolvido manualmente' })}
+                          onClick={() => resolveAlert.mutate({ id: alert.id })}
                           disabled={resolveAlert.isPending}
                         >
                           <CheckCircle className="h-4 w-4 mr-1" />
