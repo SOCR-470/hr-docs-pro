@@ -1,0 +1,70 @@
+{
+  "query": "SELECT id, name FROM document_types ORDER BY name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mtZxA1eif6Rx6U.422d1d9c9bcb --database 7ooe5noxFCRmFoZp7tW7Q3 --execute SELECT id, name FROM document_types ORDER BY name;",
+  "rows": [
+    {
+      "id": "14",
+      "name": "Advertência"
+    },
+    {
+      "id": "10",
+      "name": "ASO"
+    },
+    {
+      "id": "13",
+      "name": "Atestado Médico"
+    },
+    {
+      "id": "6",
+      "name": "Certidão de Nascimento/Casamento"
+    },
+    {
+      "id": "8",
+      "name": "Certificado de Reservista"
+    },
+    {
+      "id": "9",
+      "name": "CNH"
+    },
+    {
+      "id": "4",
+      "name": "Comprovante de Residência"
+    },
+    {
+      "id": "34",
+      "name": "Comprovante de Residência"
+    },
+    {
+      "id": "1",
+      "name": "Contrato de Trabalho"
+    },
+    {
+      "id": "3",
+      "name": "CPF"
+    },
+    {
+      "id": "12",
+      "name": "Ficha de EPI"
+    },
+    {
+      "id": "11",
+      "name": "PCMSO"
+    },
+    {
+      "id": "2",
+      "name": "RG"
+    },
+    {
+      "id": "7",
+      "name": "Título de Eleitor"
+    },
+    {
+      "id": "15",
+      "name": "TRCT"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\n14\tAdvertência\n10\tASO\n13\tAtestado Médico\n6\tCertidão de Nascimento/Casamento\n8\tCertificado de Reservista\n9\tCNH\n4\tComprovante de Residência\n34\tComprovante de Residência\n1\tContrato de Trabalho\n3\tCPF\n12\tFicha de EPI\n11\tPCMSO\n2\tRG\n7\tTítulo de Eleitor\n15\tTRCT\n",
+  "stderr": "",
+  "execution_time_ms": 344
+}

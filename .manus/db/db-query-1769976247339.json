@@ -1,0 +1,20 @@
+{
+  "query": "SELECT dt.id, dt.name, COUNT(d.id) as doc_count FROM document_types dt LEFT JOIN documents d ON dt.id = d.documentTypeId WHERE dt.name = 'Comprovante de Residência' GROUP BY dt.id, dt.name ORDER BY dt.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mtZxA1eif6Rx6U.422d1d9c9bcb --database 7ooe5noxFCRmFoZp7tW7Q3 --execute SELECT dt.id, dt.name, COUNT(d.id) as doc_count FROM document_types dt LEFT JOIN documents d ON dt.id = d.documentTypeId WHERE dt.name = 'Comprovante de Residência' GROUP BY dt.id, dt.name ORDER BY dt.id;",
+  "rows": [
+    {
+      "id": "4",
+      "name": "Comprovante de Residência",
+      "doc_count": "0"
+    },
+    {
+      "id": "34",
+      "name": "Comprovante de Residência",
+      "doc_count": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tdoc_count\n4\tComprovante de Residência\t0\n34\tComprovante de Residência\t1\n",
+  "stderr": "",
+  "execution_time_ms": 355
+}

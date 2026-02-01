@@ -1,0 +1,64 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mtZxA1eif6Rx6U.422d1d9c9bcb --database 7ooe5noxFCRmFoZp7tW7Q3 --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "audit_log"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "compliance_alerts"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "compliance_history"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "departments"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "document_shares"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "document_signatures"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "document_templates"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "document_types"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "documents"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "email_log"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "employees"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "external_requests"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "lgpd_consents"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "predictive_analysis"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "recurring_documents"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "template_items"
+    },
+    {
+      "Tables_in_7ooe5noxFCRmFoZp7tW7Q3": "users"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_7ooe5noxFCRmFoZp7tW7Q3\n__drizzle_migrations\naudit_log\ncompliance_alerts\ncompliance_history\ndepartments\ndocument_shares\ndocument_signatures\ndocument_templates\ndocument_types\ndocuments\nemail_log\nemployees\nexternal_requests\nlgpd_consents\npredictive_analysis\nrecurring_documents\ntemplate_items\nusers\n",
+  "stderr": "",
+  "execution_time_ms": 343
+}

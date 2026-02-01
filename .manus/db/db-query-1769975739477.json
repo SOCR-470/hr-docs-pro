@@ -1,0 +1,155 @@
+{
+  "query": "SELECT dt.id, dt.name, dt.category FROM document_types dt WHERE dt.id NOT IN (SELECT DISTINCT documentTypeId FROM documents WHERE documentTypeId IS NOT NULL) AND EXISTS (SELECT 1 FROM document_types dt2 WHERE dt2.name = dt.name AND dt2.category = dt.category AND dt2.id < dt.id) ORDER BY dt.name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mtZxA1eif6Rx6U.422d1d9c9bcb --database 7ooe5noxFCRmFoZp7tW7Q3 --execute SELECT dt.id, dt.name, dt.category FROM document_types dt WHERE dt.id NOT IN (SELECT DISTINCT documentTypeId FROM documents WHERE documentTypeId IS NOT NULL) AND EXISTS (SELECT 1 FROM document_types dt2 WHERE dt2.name = dt.name AND dt2.category = dt.category AND dt2.id < dt.id) ORDER BY dt.name;",
+  "rows": [
+    {
+      "id": "44",
+      "name": "Advertência",
+      "category": "personal"
+    },
+    {
+      "id": "29",
+      "name": "Advertência",
+      "category": "personal"
+    },
+    {
+      "id": "40",
+      "name": "ASO",
+      "category": "compliance"
+    },
+    {
+      "id": "25",
+      "name": "ASO",
+      "category": "compliance"
+    },
+    {
+      "id": "28",
+      "name": "Atestado Médico",
+      "category": "personal"
+    },
+    {
+      "id": "43",
+      "name": "Atestado Médico",
+      "category": "personal"
+    },
+    {
+      "id": "20",
+      "name": "Carteira de Trabalho",
+      "category": "admission"
+    },
+    {
+      "id": "35",
+      "name": "Carteira de Trabalho",
+      "category": "admission"
+    },
+    {
+      "id": "21",
+      "name": "Certidão de Nascimento/Casamento",
+      "category": "admission"
+    },
+    {
+      "id": "36",
+      "name": "Certidão de Nascimento/Casamento",
+      "category": "admission"
+    },
+    {
+      "id": "38",
+      "name": "Certificado de Reservista",
+      "category": "admission"
+    },
+    {
+      "id": "23",
+      "name": "Certificado de Reservista",
+      "category": "admission"
+    },
+    {
+      "id": "24",
+      "name": "CNH",
+      "category": "compliance"
+    },
+    {
+      "id": "39",
+      "name": "CNH",
+      "category": "compliance"
+    },
+    {
+      "id": "19",
+      "name": "Comprovante de Residência",
+      "category": "admission"
+    },
+    {
+      "id": "31",
+      "name": "Contrato de Trabalho",
+      "category": "admission"
+    },
+    {
+      "id": "16",
+      "name": "Contrato de Trabalho",
+      "category": "admission"
+    },
+    {
+      "id": "33",
+      "name": "CPF",
+      "category": "admission"
+    },
+    {
+      "id": "18",
+      "name": "CPF",
+      "category": "admission"
+    },
+    {
+      "id": "42",
+      "name": "Ficha de EPI",
+      "category": "compliance"
+    },
+    {
+      "id": "27",
+      "name": "Ficha de EPI",
+      "category": "compliance"
+    },
+    {
+      "id": "26",
+      "name": "PCMSO",
+      "category": "compliance"
+    },
+    {
+      "id": "41",
+      "name": "PCMSO",
+      "category": "compliance"
+    },
+    {
+      "id": "32",
+      "name": "RG",
+      "category": "admission"
+    },
+    {
+      "id": "17",
+      "name": "RG",
+      "category": "admission"
+    },
+    {
+      "id": "22",
+      "name": "Título de Eleitor",
+      "category": "admission"
+    },
+    {
+      "id": "37",
+      "name": "Título de Eleitor",
+      "category": "admission"
+    },
+    {
+      "id": "30",
+      "name": "TRCT",
+      "category": "personal"
+    },
+    {
+      "id": "45",
+      "name": "TRCT",
+      "category": "personal"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tcategory\n44\tAdvertência\tpersonal\n29\tAdvertência\tpersonal\n40\tASO\tcompliance\n25\tASO\tcompliance\n28\tAtestado Médico\tpersonal\n43\tAtestado Médico\tpersonal\n20\tCarteira de Trabalho\tadmission\n35\tCarteira de Trabalho\tadmission\n21\tCertidão de Nascimento/Casamento\tadmission\n36\tCertidão de Nascimento/Casamento\tadmission\n38\tCertificado de Reservista\tadmission\n23\tCertificado de Reservista\tadmission\n24\tCNH\tcompliance\n39\tCNH\tcompliance\n19\tComprovante de Residência\tadmission\n31\tContrato de Trabalho\tadmission\n16\tContrato de Trabalho\tadmission\n33\tCPF\tadmission\n18\tCPF\tadmission\n42\tFicha de EPI\tcompliance\n27\tFicha de EPI\tcompliance\n26\tPCMSO\tcompliance\n41\tPCMSO\tcompliance\n32\tRG\tadmission\n17\tRG\tadmission\n22\tTítulo de Eleitor\tadmission\n37\tTítulo de Eleitor\tadmission\n30\tTRCT\tpersonal\n45\tTRCT\tpersonal\n",
+  "stderr": "",
+  "execution_time_ms": 348
+}

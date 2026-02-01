@@ -1,0 +1,90 @@
+{
+  "query": "SELECT id, name, category FROM document_types ORDER BY name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mtZxA1eif6Rx6U.422d1d9c9bcb --database 7ooe5noxFCRmFoZp7tW7Q3 --execute SELECT id, name, category FROM document_types ORDER BY name;",
+  "rows": [
+    {
+      "id": "14",
+      "name": "Advertência",
+      "category": "personal"
+    },
+    {
+      "id": "10",
+      "name": "ASO",
+      "category": "compliance"
+    },
+    {
+      "id": "13",
+      "name": "Atestado Médico",
+      "category": "personal"
+    },
+    {
+      "id": "5",
+      "name": "Carteira de Trabalho",
+      "category": "admission"
+    },
+    {
+      "id": "6",
+      "name": "Certidão de Nascimento/Casamento",
+      "category": "admission"
+    },
+    {
+      "id": "8",
+      "name": "Certificado de Reservista",
+      "category": "admission"
+    },
+    {
+      "id": "9",
+      "name": "CNH",
+      "category": "compliance"
+    },
+    {
+      "id": "4",
+      "name": "Comprovante de Residência",
+      "category": "admission"
+    },
+    {
+      "id": "34",
+      "name": "Comprovante de Residência",
+      "category": "admission"
+    },
+    {
+      "id": "1",
+      "name": "Contrato de Trabalho",
+      "category": "admission"
+    },
+    {
+      "id": "3",
+      "name": "CPF",
+      "category": "admission"
+    },
+    {
+      "id": "12",
+      "name": "Ficha de EPI",
+      "category": "compliance"
+    },
+    {
+      "id": "11",
+      "name": "PCMSO",
+      "category": "compliance"
+    },
+    {
+      "id": "2",
+      "name": "RG",
+      "category": "admission"
+    },
+    {
+      "id": "7",
+      "name": "Título de Eleitor",
+      "category": "admission"
+    },
+    {
+      "id": "15",
+      "name": "TRCT",
+      "category": "personal"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tcategory\n14\tAdvertência\tpersonal\n10\tASO\tcompliance\n13\tAtestado Médico\tpersonal\n5\tCarteira de Trabalho\tadmission\n6\tCertidão de Nascimento/Casamento\tadmission\n8\tCertificado de Reservista\tadmission\n9\tCNH\tcompliance\n4\tComprovante de Residência\tadmission\n34\tComprovante de Residência\tadmission\n1\tContrato de Trabalho\tadmission\n3\tCPF\tadmission\n12\tFicha de EPI\tcompliance\n11\tPCMSO\tcompliance\n2\tRG\tadmission\n7\tTítulo de Eleitor\tadmission\n15\tTRCT\tpersonal\n",
+  "stderr": "",
+  "execution_time_ms": 344
+}

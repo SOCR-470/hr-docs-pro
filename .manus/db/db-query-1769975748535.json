@@ -1,0 +1,13 @@
+{
+  "query": "SELECT COUNT(*) as total FROM document_types;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mtZxA1eif6Rx6U.422d1d9c9bcb --database 7ooe5noxFCRmFoZp7tW7Q3 --execute SELECT COUNT(*) as total FROM document_types;",
+  "rows": [
+    {
+      "total": "16"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\n16\n",
+  "stderr": "",
+  "execution_time_ms": 345
+}

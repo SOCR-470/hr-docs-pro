@@ -158,3 +158,16 @@
 - [x] Criar documentos pendentes na pasta do funcionário baseado no template
 - [x] Permitir adicionar documentos extras posteriormente à pasta do colaborador
 - [x] Interface para gerenciar vinculação template-cargo
+
+## Fase 4 - Correções e Melhorias
+
+### Bugs Reportados
+- [x] Documentos triplicados no select de templates (página de funcionário) - removidos do banco
+- [x] Documentos triplicados no select de envio de documentos - removidos do banco
+- [x] Botão de envio para assinatura não funciona (apenas simulação) - implementado envio real
+
+### Melhorias Solicitadas
+- [x] Dashboard: Expandir compliance por departamento ao clicar, mostrando funcionários e scores
+- [x] Detalhes do funcionário: Mostrar dados completos (admissão, cargo, dados pessoais, horário, departamento)
+- [x] Envio de documentos para assinatura: Usar email do funcionário cadastrado, solicitar quando ausente
+

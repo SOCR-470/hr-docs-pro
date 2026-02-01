@@ -155,10 +155,20 @@ export async function getDocumentTypes(category?: string) {
   const db = await getDb();
   if (!db) return [];
   
+  let results;
   if (category) {
-    return db.select().from(documentTypes).where(eq(documentTypes.category, category as any));
+    results = await db.select().from(documentTypes).where(eq(documentTypes.category, category as any));
+  } else {
+    results = await db.select().from(documentTypes).orderBy(documentTypes.category, documentTypes.name);
   }
-  return db.select().from(documentTypes).orderBy(documentTypes.category, documentTypes.name);
+  
+  // Remove duplicatas por nome, mantendo o primeiro de cada
+  const seen = new Set<string>();
+  return results.filter(dt => {
+    if (seen.has(dt.name)) return false;
+    seen.add(dt.name);
+    return true;
+  });
 }
 
 export async function createDocumentType(data: InsertDocumentType) {
@@ -374,6 +384,26 @@ export async function getDashboardStats() {
     departmentStats,
     recentAlerts,
   };
+}
+
+// ============ EMPLOYEES BY DEPARTMENT ============
+export async function getEmployeesByDepartment(departmentId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select({
+    id: employees.id,
+    name: employees.name,
+    position: employees.position,
+    complianceScore: employees.complianceScore,
+    status: employees.status,
+  })
+  .from(employees)
+  .where(and(
+    eq(employees.departmentId, departmentId),
+    eq(employees.status, 'active')
+  ))
+  .orderBy(employees.name);
 }
 
 // ============ AUDIT LOG ============

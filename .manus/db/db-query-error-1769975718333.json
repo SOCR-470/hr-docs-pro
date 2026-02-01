@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, name, category, COUNT(*) as count FROM document_types GROUP BY name, category HAVING count > 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mtZxA1eif6Rx6U.422d1d9c9bcb --database 7ooe5noxFCRmFoZp7tW7Q3 --execute SELECT id, name, category, COUNT(*) as count FROM document_types GROUP BY name, category HAVING count > 1;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1055 (42000) at line 1: Expression #1 of SELECT list is not in GROUP BY clause and contains nonaggregated column '7ooe5noxFCRmFoZp7tW7Q3.document_types.id' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by"
+  ]
+}

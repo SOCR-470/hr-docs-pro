@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,13 +10,23 @@ import {
   CheckCircle, 
   TrendingUp,
   FileWarning,
-  Clock
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  User
 } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const { data: stats, isLoading } = trpc.dashboard.stats.useQuery();
+  const [expandedDepartment, setExpandedDepartment] = useState<number | null>(null);
+
+  // Query para funcionários do departamento expandido
+  const { data: departmentEmployees, isLoading: loadingEmployees } = trpc.departments.employees.useQuery(
+    { departmentId: expandedDepartment! },
+    { enabled: expandedDepartment !== null }
+  );
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -27,12 +38,26 @@ export default function Home() {
     return "text-red-600";
   };
 
+  const complianceBgColor = (score: number) => {
+    if (score >= 80) return "bg-emerald-100";
+    if (score >= 50) return "bg-amber-100";
+    return "bg-red-100";
+  };
+
   const severityColor = (severity: string) => {
     switch (severity) {
       case "critical": return "bg-red-100 text-red-700 border-red-200";
       case "high": return "bg-orange-100 text-orange-700 border-orange-200";
       case "medium": return "bg-amber-100 text-amber-700 border-amber-200";
       default: return "bg-slate-100 text-slate-700 border-slate-200";
+    }
+  };
+
+  const toggleDepartment = (deptId: number | null) => {
+    if (expandedDepartment === deptId) {
+      setExpandedDepartment(null);
+    } else {
+      setExpandedDepartment(deptId);
     }
   };
 
@@ -112,29 +137,83 @@ export default function Home() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Compliance by Department */}
+        {/* Compliance by Department - Expandable */}
         <Card className="border-0 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">Compliance por Departamento</CardTitle>
-            <CardDescription>Score médio de conformidade</CardDescription>
+            <CardDescription>Clique em um departamento para ver os funcionários</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-2">
             {stats?.departmentStats && stats.departmentStats.length > 0 ? (
               stats.departmentStats.map((dept: any) => (
                 <div key={dept.departmentId || 'no-dept'} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-slate-700">
-                      {dept.departmentName || 'Sem Departamento'}
-                    </span>
-                    <span className={`text-sm font-bold ${complianceColor(Number(dept.avgCompliance) || 0)}`}>
-                      {Math.round(Number(dept.avgCompliance) || 0)}%
-                    </span>
+                  <div 
+                    className="p-3 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer transition-colors"
+                    onClick={() => toggleDepartment(dept.departmentId)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {expandedDepartment === dept.departmentId ? (
+                          <ChevronUp className="h-4 w-4 text-slate-400" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-slate-400" />
+                        )}
+                        <span className="text-sm font-medium text-slate-700">
+                          {dept.departmentName || 'Sem Departamento'}
+                        </span>
+                      </div>
+                      <span className={`text-sm font-bold ${complianceColor(Number(dept.avgCompliance) || 0)}`}>
+                        {Math.round(Number(dept.avgCompliance) || 0)}%
+                      </span>
+                    </div>
+                    <div className="mt-2 ml-6">
+                      <Progress 
+                        value={Number(dept.avgCompliance) || 0} 
+                        className="h-2"
+                      />
+                      <p className="text-xs text-slate-400 mt-1">{dept.employeeCount} funcionários</p>
+                    </div>
                   </div>
-                  <Progress 
-                    value={Number(dept.avgCompliance) || 0} 
-                    className="h-2"
-                  />
-                  <p className="text-xs text-slate-400">{dept.employeeCount} funcionários</p>
+                  
+                  {/* Expanded Employee List */}
+                  {expandedDepartment === dept.departmentId && (
+                    <div className="ml-6 pl-4 border-l-2 border-slate-200 space-y-2">
+                      {loadingEmployees ? (
+                        <div className="py-4 text-center">
+                          <Skeleton className="h-8 w-full" />
+                          <Skeleton className="h-8 w-full mt-2" />
+                        </div>
+                      ) : departmentEmployees && departmentEmployees.length > 0 ? (
+                        departmentEmployees.map((emp: any) => (
+                          <div 
+                            key={emp.id}
+                            className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLocation(`/employees/${emp.id}`);
+                            }}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`h-8 w-8 rounded-full ${complianceBgColor(emp.complianceScore || 0)} flex items-center justify-center`}>
+                                <User className={`h-4 w-4 ${complianceColor(emp.complianceScore || 0)}`} />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-slate-700">{emp.name}</p>
+                                <p className="text-xs text-slate-400">{emp.position || 'Sem cargo'}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-sm font-bold ${complianceColor(emp.complianceScore || 0)}`}>
+                                {emp.complianceScore || 0}%
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-slate-500 py-2">Nenhum funcionário neste departamento</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))
             ) : (

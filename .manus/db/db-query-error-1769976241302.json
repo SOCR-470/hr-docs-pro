@@ -1,0 +1,8 @@
+{
+  "query": "DELETE t1 FROM document_types t1 INNER JOIN document_types t2 WHERE t1.id > t2.id AND t1.name = t2.name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mtZxA1eif6Rx6U.422d1d9c9bcb --database 7ooe5noxFCRmFoZp7tW7Q3 --execute DELETE t1 FROM document_types t1 INNER JOIN document_types t2 WHERE t1.id > t2.id AND t1.name = t2.name;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1451 (23000) at line 1: Cannot delete or update a parent row: a foreign key constraint fails (`7ooe5noxfcrmfozp7tw7q3`.`documents`, CONSTRAINT `documents_documentTypeId_document_types_id_fk` FOREIGN KEY (`documentTypeId`) REFERENCES `document_types` (`id`) ON DELETE NO ACTION ON UPDATE)"
+  ]
+}

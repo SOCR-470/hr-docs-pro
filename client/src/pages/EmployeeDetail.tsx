@@ -170,31 +170,58 @@ export default function EmployeeDetail({ id }: { id: number }) {
                 <p className="text-sm text-slate-500 mt-1">CPF: {employee.cpf}</p>
               </div>
             </div>
-            <div className="mt-4 space-y-2 text-sm">
-              {employee.email && (
+            
+            {/* Dados Completos do Funcionário */}
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Dados Pessoais</h4>
+              <div className="space-y-2 text-sm">
+                {employee.email && (
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <Mail className="h-4 w-4 text-slate-400" />
+                    <span>{employee.email}</span>
+                  </div>
+                )}
+                {employee.phone && (
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <Phone className="h-4 w-4 text-slate-400" />
+                    <span>{employee.phone}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Dados Profissionais</h4>
+              <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2 text-slate-600">
-                  <Mail className="h-4 w-4" />
-                  {employee.email}
+                  <Briefcase className="h-4 w-4 text-slate-400" />
+                  <span className="font-medium">{employee.position || 'Cargo não definido'}</span>
                 </div>
-              )}
-              {employee.phone && (
-                <div className="flex items-center gap-2 text-slate-600">
-                  <Phone className="h-4 w-4" />
-                  {employee.phone}
-                </div>
-              )}
-              {employee.department && (
-                <div className="flex items-center gap-2 text-slate-600">
-                  <Building2 className="h-4 w-4" />
-                  {employee.department.name}
-                </div>
-              )}
-              {employee.workHours && (
-                <div className="flex items-center gap-2 text-slate-600">
-                  <Clock className="h-4 w-4" />
-                  {employee.workHours}
-                </div>
-              )}
+                {employee.department && (
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <Building2 className="h-4 w-4 text-slate-400" />
+                    <span>{employee.department.name}</span>
+                  </div>
+                )}
+                {employee.admissionDate && (
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <Calendar className="h-4 w-4 text-slate-400" />
+                    <span>Admissão: {new Date(employee.admissionDate).toLocaleDateString('pt-BR')}</span>
+                  </div>
+                )}
+                {employee.workHours && (
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <Clock className="h-4 w-4 text-slate-400" />
+                    <span>Horário: {employee.workHours}</span>
+                  </div>
+                )}
+                {employee.salary && (
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <span className="h-4 w-4 text-slate-400 flex items-center justify-center text-xs font-bold">R$</span>
+                    <span>Salário: R$ {Number(employee.salary).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>

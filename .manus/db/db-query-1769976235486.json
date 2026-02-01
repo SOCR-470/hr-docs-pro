@@ -1,0 +1,145 @@
+{
+  "query": "SELECT * FROM document_types ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mtZxA1eif6Rx6U.422d1d9c9bcb --database 7ooe5noxFCRmFoZp7tW7Q3 --execute SELECT * FROM document_types ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Contrato de Trabalho",
+      "description": "Contrato de trabalho assinado",
+      "category": "admission",
+      "isRequired": "1",
+      "validityDays": "NULL",
+      "createdAt": "2026-02-01 17:12:01"
+    },
+    {
+      "id": "2",
+      "name": "RG",
+      "description": "Documento de identidade",
+      "category": "admission",
+      "isRequired": "1",
+      "validityDays": "NULL",
+      "createdAt": "2026-02-01 17:12:01"
+    },
+    {
+      "id": "3",
+      "name": "CPF",
+      "description": "Cadastro de Pessoa Física",
+      "category": "admission",
+      "isRequired": "1",
+      "validityDays": "NULL",
+      "createdAt": "2026-02-01 17:12:01"
+    },
+    {
+      "id": "4",
+      "name": "Comprovante de Residência",
+      "description": "Comprovante de endereço atualizado",
+      "category": "admission",
+      "isRequired": "1",
+      "validityDays": "180",
+      "createdAt": "2026-02-01 17:12:01"
+    },
+    {
+      "id": "6",
+      "name": "Certidão de Nascimento/Casamento",
+      "description": "Estado civil",
+      "category": "admission",
+      "isRequired": "0",
+      "validityDays": "NULL",
+      "createdAt": "2026-02-01 17:12:01"
+    },
+    {
+      "id": "7",
+      "name": "Título de Eleitor",
+      "description": "Documento eleitoral",
+      "category": "admission",
+      "isRequired": "0",
+      "validityDays": "NULL",
+      "createdAt": "2026-02-01 17:12:01"
+    },
+    {
+      "id": "8",
+      "name": "Certificado de Reservista",
+      "description": "Para homens",
+      "category": "admission",
+      "isRequired": "0",
+      "validityDays": "NULL",
+      "createdAt": "2026-02-01 17:12:01"
+    },
+    {
+      "id": "9",
+      "name": "CNH",
+      "description": "Carteira Nacional de Habilitação",
+      "category": "compliance",
+      "isRequired": "0",
+      "validityDays": "1825",
+      "createdAt": "2026-02-01 17:12:01"
+    },
+    {
+      "id": "10",
+      "name": "ASO",
+      "description": "Atestado de Saúde Ocupacional",
+      "category": "compliance",
+      "isRequired": "1",
+      "validityDays": "365",
+      "createdAt": "2026-02-01 17:12:01"
+    },
+    {
+      "id": "11",
+      "name": "PCMSO",
+      "description": "Programa de Controle Médico",
+      "category": "compliance",
+      "isRequired": "1",
+      "validityDays": "365",
+      "createdAt": "2026-02-01 17:12:01"
+    },
+    {
+      "id": "12",
+      "name": "Ficha de EPI",
+      "description": "Equipamentos de Proteção Individual",
+      "category": "compliance",
+      "isRequired": "0",
+      "validityDays": "NULL",
+      "createdAt": "2026-02-01 17:12:01"
+    },
+    {
+      "id": "13",
+      "name": "Atestado Médico",
+      "description": "Atestados e justificativas médicas",
+      "category": "personal",
+      "isRequired": "0",
+      "validityDays": "NULL",
+      "createdAt": "2026-02-01 17:12:01"
+    },
+    {
+      "id": "14",
+      "name": "Advertência",
+      "description": "Advertências disciplinares",
+      "category": "personal",
+      "isRequired": "0",
+      "validityDays": "NULL",
+      "createdAt": "2026-02-01 17:12:01"
+    },
+    {
+      "id": "15",
+      "name": "TRCT",
+      "description": "Termo de Rescisão de Contrato",
+      "category": "personal",
+      "isRequired": "0",
+      "validityDays": "NULL",
+      "createdAt": "2026-02-01 17:12:01"
+    },
+    {
+      "id": "34",
+      "name": "Comprovante de Residência",
+      "description": "Comprovante de endereço atualizado",
+      "category": "admission",
+      "isRequired": "1",
+      "validityDays": "180",
+      "createdAt": "2026-02-01 17:13:12"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tdescription\tcategory\tisRequired\tvalidityDays\tcreatedAt\n1\tContrato de Trabalho\tContrato de trabalho assinado\tadmission\t1\tNULL\t2026-02-01 17:12:01\n2\tRG\tDocumento de identidade\tadmission\t1\tNULL\t2026-02-01 17:12:01\n3\tCPF\tCadastro de Pessoa Física\tadmission\t1\tNULL\t2026-02-01 17:12:01\n4\tComprovante de Residência\tComprovante de endereço atualizado\tadmission\t1\t180\t2026-02-01 17:12:01\n6\tCertidão de Nascimento/Casamento\tEstado civil\tadmission\t0\tNULL\t2026-02-01 17:12:01\n7\tTítulo de Eleitor\tDocumento eleitoral\tadmission\t0\tNULL\t2026-02-01 17:12:01\n8\tCertificado de Reservista\tPara homens\tadmission\t0\tNULL\t2026-02-01 17:12:01\n9\tCNH\tCarteira Nacional de Habilitação\tcompliance\t0\t1825\t2026-02-01 17:12:01\n10\tASO\tAtestado de Saúde Ocupacional\tcompliance\t1\t365\t2026-02-01 17:12:01\n11\tPCMSO\tPrograma de Controle Médico\tcompliance\t1\t365\t2026-02-01 17:12:01\n12\tFicha de EPI\tEquipamentos de Proteção Individual\tcompliance\t0\tNULL\t2026-02-01 17:12:01\n13\tAtestado Médico\tAtestados e justificativas médicas\tpersonal\t0\tNULL\t2026-02-01 17:12:01\n14\tAdvertência\tAdvertências disciplinares\tpersonal\t0\tNULL\t2026-02-01 17:12:01\n15\tTRCT\tTermo de Rescisão de Contrato\tpersonal\t0\tNULL\t2026-02-01 17:12:01\n34\tComprovante de Residência\tComprovante de endereço atualizado\tadmission\t1\t180\t2026-02-01 17:13:12\n",
+  "stderr": "",
+  "execution_time_ms": 353
+}

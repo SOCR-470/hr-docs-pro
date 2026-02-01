@@ -51,6 +51,11 @@ export const appRouter = router({
     list: protectedProcedure.query(async () => {
       return db.getDepartments();
     }),
+    employees: protectedProcedure
+      .input(z.object({ departmentId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getEmployeesByDepartment(input.departmentId);
+      }),
     create: adminProcedure
       .input(z.object({
         name: z.string().min(1),
@@ -877,15 +882,52 @@ export const appRouter = router({
         documentType: z.string(),
         documentTitle: z.string(),
         templateData: z.record(z.string(), z.unknown()).optional(),
+        sendEmail: z.boolean().default(true),
       }))
       .mutation(async ({ input, ctx }) => {
-        return lgpdService.createDocumentSignature(
+        // Buscar dados do funcionário
+        const employee = await db.getEmployeeById(input.employeeId);
+        if (!employee) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Funcionário não encontrado' });
+        }
+        
+        if (!employee.email) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Funcionário não possui email cadastrado. Por favor, atualize o cadastro.' });
+        }
+        
+        // Criar solicitação de assinatura
+        const signature = await lgpdService.createDocumentSignature(
           input.employeeId,
           input.documentType,
           input.documentTitle,
           input.templateData || {},
           ctx.user.id
         );
+        
+        if (!signature) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Erro ao criar solicitação de assinatura' });
+        }
+        
+        // Gerar código de verificação
+        const verificationCode = await lgpdService.sendDocumentVerificationCode(signature.id);
+        
+        // Enviar email automaticamente
+        if (input.sendEmail && verificationCode) {
+          const baseUrl = ctx.req.headers.origin || `https://${ctx.req.headers.host}`;
+          await sendDocumentSignatureEmail({
+            employeeId: input.employeeId,
+            employeeName: employee.name,
+            employeeEmail: employee.email,
+            documentName: input.documentTitle,
+            documentType: input.documentType,
+            signatureToken: signature.token,
+            verificationCode,
+            baseUrl,
+            createdBy: ctx.user.id,
+          });
+        }
+        
+        return signature;
       }),
     
     getByToken: publicProcedure

@@ -1,0 +1,52 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'documents';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mtZxA1eif6Rx6U.422d1d9c9bcb --database 7ooe5noxFCRmFoZp7tW7Q3 --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'documents';",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "employeeId"
+    },
+    {
+      "COLUMN_NAME": "documentTypeId"
+    },
+    {
+      "COLUMN_NAME": "fileName"
+    },
+    {
+      "COLUMN_NAME": "fileUrl"
+    },
+    {
+      "COLUMN_NAME": "fileKey"
+    },
+    {
+      "COLUMN_NAME": "mimeType"
+    },
+    {
+      "COLUMN_NAME": "fileSize"
+    },
+    {
+      "COLUMN_NAME": "status"
+    },
+    {
+      "COLUMN_NAME": "expiresAt"
+    },
+    {
+      "COLUMN_NAME": "extractedData"
+    },
+    {
+      "COLUMN_NAME": "uploadedBy"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nemployeeId\ndocumentTypeId\nfileName\nfileUrl\nfileKey\nmimeType\nfileSize\nstatus\nexpiresAt\nextractedData\nuploadedBy\ncreatedAt\nupdatedAt\n",
+  "stderr": "",
+  "execution_time_ms": 347
+}
