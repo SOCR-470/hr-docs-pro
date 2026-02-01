@@ -61,6 +61,7 @@ const legalMenuItems = [
   { icon: Gavel, label: "Processos", path: "/lawsuits" },
   { icon: Calendar, label: "Audiências", path: "/hearings" },
   { icon: Users, label: "Advogados", path: "/lawyers" },
+  { icon: Mail, label: "Comunicações", path: "/communications" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

@@ -240,3 +240,8 @@
 - [x] Custo total com passivo trabalhista
 - [ ] Exportação em PDF/Excel
 
+
+## Fase 6 - Correções
+
+### Bugs Reportados
+- [x] Página de Comunicações do Tribunal retorna erro 404 - página criada e adicionada ao menu

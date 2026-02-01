@@ -18,6 +18,7 @@ import LegalDashboard from "./pages/LegalDashboard";
 import Lawsuits from "./pages/Lawsuits";
 import Hearings from "./pages/Hearings";
 import Lawyers from "./pages/Lawyers";
+import CourtCommunications from "./pages/CourtCommunications";
 
 function Router() {
   return (
@@ -90,6 +91,11 @@ function Router() {
       <Route path="/lawyers">
         <DashboardLayout>
           <Lawyers />
+        </DashboardLayout>
+      </Route>
+      <Route path="/communications">
+        <DashboardLayout>
+          <CourtCommunications />
         </DashboardLayout>
       </Route>
       
