@@ -49,9 +49,22 @@ export default function Employees() {
   
   const { data: departments } = trpc.departments.list.useQuery();
   
+  const applyTemplates = trpc.templateApplication.applyToEmployee.useMutation({
+    onSuccess: (result) => {
+      if (result.createdDocuments > 0) {
+        toast.success(`${result.createdDocuments} documentos pendentes criados automaticamente`);
+      }
+    },
+  });
+
   const createEmployee = trpc.employees.create.useMutation({
-    onSuccess: () => {
+    onSuccess: (employee) => {
       toast.success("Funcionário cadastrado com sucesso!");
+      // Aplicar templates automaticamente baseado no cargo/departamento
+      applyTemplates.mutate({ 
+        employeeId: employee.id, 
+        skipExisting: true 
+      });
       setIsAddDialogOpen(false);
       refetch();
     },

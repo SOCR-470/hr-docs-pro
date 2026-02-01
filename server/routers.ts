@@ -15,6 +15,9 @@ import * as templateService from "./templateService";
 import * as lgpdService from "./lgpdService";
 import * as shareService from "./shareService";
 import * as analyticsService from "./analyticsService";
+import * as templateApplicationService from "./templateApplicationService";
+import { sendLgpdConsentEmail, sendDocumentShareEmail, sendDocumentSignatureEmail, lgpdEmailTemplates } from "./emailService";
+import { generateLgpdConsentPdf } from "./pdfService";
 
 // Admin-only procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -1003,6 +1006,148 @@ export const appRouter = router({
       .query(async ({ input }) => {
         const hasConsent = await shareService.hasValidLgpdConsent(input.employeeId);
         return { hasConsent };
+      }),
+  }),
+
+  // ============ TEMPLATE APPLICATION ============
+  templateApplication: router({
+    // Apply templates to employee
+    applyToEmployee: protectedProcedure
+      .input(z.object({
+        employeeId: z.number(),
+        templateIds: z.array(z.number()).optional(),
+        skipExisting: z.boolean().optional().default(false),
+      }))
+      .mutation(async ({ input }) => {
+        return templateApplicationService.applyTemplatesToEmployee(
+          input.employeeId,
+          { templateIds: input.templateIds, skipExisting: input.skipExisting }
+        );
+      }),
+    
+    // Add extra document to employee
+    addExtraDocument: protectedProcedure
+      .input(z.object({
+        employeeId: z.number(),
+        documentTypeId: z.number(),
+        isRequired: z.boolean().optional().default(false),
+        expirationDays: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return templateApplicationService.addExtraDocumentToEmployee(
+          input.employeeId,
+          input.documentTypeId,
+          { isRequired: input.isRequired, expirationDays: input.expirationDays }
+        );
+      }),
+    
+    // Get employee template status
+    employeeStatus: protectedProcedure
+      .input(z.object({ employeeId: z.number() }))
+      .query(async ({ input }) => {
+        return templateApplicationService.getEmployeeTemplateStatus(input.employeeId);
+      }),
+    
+    // Bulk apply templates to all employees
+    bulkApply: adminProcedure.mutation(async () => {
+      return templateApplicationService.bulkApplyTemplates();
+    }),
+    
+    // Get available positions
+    positions: protectedProcedure.query(async () => {
+      return templateApplicationService.getAvailablePositions();
+    }),
+    
+    // Find matching templates for position/department
+    findMatching: protectedProcedure
+      .input(z.object({
+        position: z.string().optional(),
+        departmentId: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        return templateApplicationService.findMatchingTemplates(
+          input.position || null,
+          input.departmentId || null
+        );
+      }),
+  }),
+
+  // ============ EMAIL NOTIFICATIONS ============
+  emails: router({
+    // Send LGPD consent email
+    sendLgpdConsent: protectedProcedure
+      .input(z.object({
+        employeeId: z.number(),
+        employeeName: z.string(),
+        employeeEmail: z.string().email(),
+        consentToken: z.string(),
+        verificationCode: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const baseUrl = ctx.req.headers.origin || 'https://hr-docs-pro.manus.space';
+        return sendLgpdConsentEmail({
+          ...input,
+          baseUrl,
+          createdBy: ctx.user.id,
+        });
+      }),
+    
+    // Send document share email
+    sendDocumentShare: protectedProcedure
+      .input(z.object({
+        recipientEmail: z.string().email(),
+        recipientName: z.string(),
+        employeeName: z.string(),
+        shareToken: z.string(),
+        documentCount: z.number(),
+        expirationDate: z.date(),
+        message: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const baseUrl = ctx.req.headers.origin || 'https://hr-docs-pro.manus.space';
+        return sendDocumentShareEmail({
+          ...input,
+          senderName: ctx.user.name || 'HR Docs Pro',
+          baseUrl,
+          createdBy: ctx.user.id,
+        });
+      }),
+    
+    // Send document signature email
+    sendDocumentSignature: protectedProcedure
+      .input(z.object({
+        employeeId: z.number(),
+        employeeName: z.string(),
+        employeeEmail: z.string().email(),
+        documentName: z.string(),
+        documentType: z.string(),
+        signatureToken: z.string(),
+        verificationCode: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const baseUrl = ctx.req.headers.origin || 'https://hr-docs-pro.manus.space';
+        return sendDocumentSignatureEmail({
+          ...input,
+          baseUrl,
+          createdBy: ctx.user.id,
+        });
+      }),
+    
+    // Get email logs
+    logs: protectedProcedure
+      .input(z.object({ limit: z.number().optional().default(50) }).optional())
+      .query(async ({ input }) => {
+        return getEmailLogs(input?.limit);
+      }),
+  }),
+
+  // ============ PDF GENERATION ============
+  pdf: router({
+    // Generate LGPD consent PDF
+    generateLgpdConsent: protectedProcedure
+      .input(z.object({ consentId: z.number() }))
+      .mutation(async ({ input }) => {
+        return generateLgpdConsentPdf(input.consentId);
       }),
   }),
 

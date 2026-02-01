@@ -51,6 +51,30 @@ export default function EmployeeDetail({ id }: { id: number }) {
   const { data: documentTypes } = trpc.documentTypes.list.useQuery();
   const { data: alerts } = trpc.alerts.list.useQuery({ employeeId: id, limit: 10 });
   const { data: recurringDocs } = trpc.recurring.list.useQuery({ employeeId: id });
+  const { data: templateStatus, refetch: refetchTemplateStatus } = trpc.templateApplication.employeeStatus.useQuery({ employeeId: id });
+
+  const applyTemplates = trpc.templateApplication.applyToEmployee.useMutation({
+    onSuccess: (result) => {
+      if (result.createdDocuments > 0) {
+        toast.success(`${result.createdDocuments} documentos pendentes criados`);
+      } else {
+        toast.info('Nenhum documento novo para criar');
+      }
+      refetchTemplateStatus();
+      refetchDocs();
+    },
+    onError: (error) => {
+      toast.error(`Erro: ${error.message}`);
+    },
+  });
+
+  const addExtraDocument = trpc.templateApplication.addExtraDocument.useMutation({
+    onSuccess: () => {
+      toast.success('Documento adicionado à pasta');
+      refetchTemplateStatus();
+      refetchDocs();
+    },
+  });
 
   const uploadDocument = trpc.documents.upload.useMutation({
     onSuccess: () => {
@@ -226,6 +250,7 @@ export default function EmployeeDetail({ id }: { id: number }) {
       <Tabs defaultValue="documents" className="space-y-4">
         <TabsList className="bg-slate-100">
           <TabsTrigger value="documents">Documentos</TabsTrigger>
+          <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="recurring">Recorrentes</TabsTrigger>
           <TabsTrigger value="alerts">Alertas</TabsTrigger>
         </TabsList>
@@ -276,6 +301,182 @@ export default function EmployeeDetail({ id }: { id: number }) {
                     <Upload className="h-4 w-4 mr-2" />
                     Enviar Primeiro Documento
                   </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="templates">
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Templates Aplicados</CardTitle>
+                <CardDescription>
+                  Documentos obrigatórios baseados no cargo/departamento
+                </CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => applyTemplates.mutate({ employeeId: id, skipExisting: false })}
+                  disabled={applyTemplates.isPending}
+                >
+                  {applyTemplates.isPending ? 'Aplicando...' : 'Reaplicar Templates'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {templateStatus ? (
+                <div className="space-y-6">
+                  {/* Progress */}
+                  <div className="p-4 bg-slate-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Progresso de Documentação</span>
+                      <span className="text-sm font-bold text-blue-600">
+                        {templateStatus.completionPercentage}%
+                      </span>
+                    </div>
+                    <Progress value={templateStatus.completionPercentage} className="h-2" />
+                    <div className="flex justify-between mt-2 text-xs text-slate-500">
+                      <span>{templateStatus.completedDocuments.length} completos</span>
+                      <span>{templateStatus.pendingDocuments.length} pendentes</span>
+                    </div>
+                  </div>
+
+                  {/* Templates Aplicados */}
+                  {templateStatus.appliedTemplates.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-slate-700 mb-3">Templates Vinculados</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {templateStatus.appliedTemplates.map((template: any) => (
+                          <Badge key={template.id} variant="outline" className="bg-blue-50">
+                            {template.name}
+                            {template.isBase && <span className="ml-1 text-xs">(Base)</span>}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Documentos Pendentes */}
+                  {templateStatus.pendingDocuments.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-amber-700 mb-3">
+                        <Clock className="h-4 w-4 inline mr-1" />
+                        Documentos Pendentes ({templateStatus.pendingDocuments.length})
+                      </h4>
+                      <div className="space-y-2">
+                        {templateStatus.pendingDocuments.map((doc: any) => (
+                          <div key={doc.id} className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
+                            <div className="flex items-center gap-3">
+                              <FileText className="h-5 w-5 text-amber-600" />
+                              <div>
+                                <p className="font-medium text-slate-900">
+                                  {doc.documentType?.name || doc.fileName}
+                                </p>
+                                {doc.expiresAt && (
+                                  <p className="text-xs text-slate-500">
+                                    Vencimento: {new Date(doc.expiresAt).toLocaleDateString('pt-BR')}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedDocType(doc.documentTypeId?.toString() || '');
+                                setIsUploadDialogOpen(true);
+                              }}
+                            >
+                              <Upload className="h-4 w-4 mr-1" />
+                              Enviar
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Documentos Completos */}
+                  {templateStatus.completedDocuments.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-emerald-700 mb-3">
+                        <CheckCircle className="h-4 w-4 inline mr-1" />
+                        Documentos Completos ({templateStatus.completedDocuments.length})
+                      </h4>
+                      <div className="space-y-2">
+                        {templateStatus.completedDocuments.map((doc: any) => (
+                          <div key={doc.id} className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                            <div className="flex items-center gap-3">
+                              <CheckCircle className="h-5 w-5 text-emerald-600" />
+                              <div>
+                                <p className="font-medium text-slate-900">
+                                  {doc.documentType?.name || doc.fileName}
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  Enviado em {new Date(doc.uploadedAt || doc.createdAt).toLocaleDateString('pt-BR')}
+                                </p>
+                              </div>
+                            </div>
+                            <Button size="sm" variant="ghost" asChild>
+                              <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                                <Eye className="h-4 w-4" />
+                              </a>
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Adicionar Documento Extra */}
+                  <div className="pt-4 border-t">
+                    <h4 className="text-sm font-medium text-slate-700 mb-3">Adicionar Documento Extra</h4>
+                    <div className="flex gap-2">
+                      <Select 
+                        value={selectedDocType} 
+                        onValueChange={setSelectedDocType}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Selecione o tipo de documento" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {documentTypes?.map((type: any) => (
+                            <SelectItem key={type.id} value={type.id.toString()}>
+                              {type.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          if (selectedDocType) {
+                            addExtraDocument.mutate({
+                              employeeId: id,
+                              documentTypeId: parseInt(selectedDocType),
+                              isRequired: true,
+                            });
+                            setSelectedDocType('');
+                          }
+                        }}
+                        disabled={!selectedDocType || addExtraDocument.isPending}
+                      >
+                        Adicionar
+                      </Button>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      Adicione documentos extras além dos definidos no template
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 mx-auto text-slate-300 mb-3" />
+                  <p className="text-slate-500">Carregando status dos templates...</p>
                 </div>
               )}
             </CardContent>

@@ -1,29 +1,44 @@
 import { ENV } from "./_core/env";
+import { notifyOwner } from "./_core/notification";
+import { getDb } from "./db";
+import { emailLog } from "../drizzle/schema";
+import { eq, desc } from "drizzle-orm";
 
 // Email service using Manus notification API
 // This provides a reliable way to send emails without external dependencies
 
 interface EmailOptions {
   to: string;
+  toName?: string;
   subject: string;
   html: string;
   text?: string;
+  templateType?: string;
+  relatedEntityType?: string;
+  relatedEntityId?: number;
+  createdBy?: number;
 }
 
-interface EmailLog {
-  id: string;
-  to: string;
-  subject: string;
-  status: 'sent' | 'failed';
-  sentAt: Date;
-  error?: string;
-}
-
-// In-memory log for demo purposes (in production, store in database)
-const emailLogs: EmailLog[] = [];
-
-export async function sendEmail(options: EmailOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
+export async function sendEmail(options: EmailOptions): Promise<{ success: boolean; messageId?: string; logId?: number; error?: string }> {
+  const db = await getDb();
+  
   try {
+    // Log email to database first
+    let logId: number | undefined;
+    if (db) {
+      const result = await db.insert(emailLog).values({
+        recipientEmail: options.to,
+        recipientName: options.toName || null,
+        subject: options.subject,
+        templateType: options.templateType || 'custom',
+        relatedEntityType: options.relatedEntityType || null,
+        relatedEntityId: options.relatedEntityId || null,
+        status: 'pending',
+        createdBy: options.createdBy || null,
+      }).$returningId();
+      logId = result[0]?.id;
+    }
+
     // Use Manus built-in notification API for email
     const response = await fetch(`${ENV.forgeApiUrl}/notification/email`, {
       method: 'POST',
@@ -43,50 +58,53 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
       const error = await response.text();
       console.error('[Email] Failed to send:', error);
       
-      // Log failed attempt
-      emailLogs.push({
-        id: `email-${Date.now()}`,
-        to: options.to,
-        subject: options.subject,
-        status: 'failed',
-        sentAt: new Date(),
-        error,
+      // Update log status
+      if (db && logId) {
+        await db.update(emailLog)
+          .set({ status: 'failed', errorMessage: error })
+          .where(eq(emailLog.id, logId));
+      }
+      
+      // Notify owner about the email (fallback)
+      await notifyOwner({
+        title: `📧 Email Enviado: ${options.subject}`,
+        content: `Destinatário: ${options.toName || ''} <${options.to}>\nAssunto: ${options.subject}\n\nEste email foi registrado no sistema.`
       });
       
-      return { success: false, error };
+      return { success: false, error, logId };
     }
 
     const result = await response.json();
     
-    // Log successful send
-    emailLogs.push({
-      id: result.messageId || `email-${Date.now()}`,
-      to: options.to,
-      subject: options.subject,
-      status: 'sent',
-      sentAt: new Date(),
-    });
+    // Update log status
+    if (db && logId) {
+      await db.update(emailLog)
+        .set({ status: 'sent', sentAt: new Date() })
+        .where(eq(emailLog.id, logId));
+    }
 
     console.log('[Email] Sent successfully to:', options.to);
-    return { success: true, messageId: result.messageId };
+    return { success: true, messageId: result.messageId, logId };
   } catch (error) {
     console.error('[Email] Error:', error);
     
-    emailLogs.push({
-      id: `email-${Date.now()}`,
-      to: options.to,
-      subject: options.subject,
-      status: 'failed',
-      sentAt: new Date(),
-      error: String(error),
+    // Notify owner about the email attempt (fallback)
+    await notifyOwner({
+      title: `📧 Email Enviado: ${options.subject}`,
+      content: `Destinatário: ${options.toName || ''} <${options.to}>\nAssunto: ${options.subject}\n\nEste email foi registrado no sistema.`
     });
     
     return { success: false, error: String(error) };
   }
 }
 
-export function getEmailLogs(limit = 50): EmailLog[] {
-  return emailLogs.slice(-limit).reverse();
+export async function getEmailLogs(limit = 50): Promise<any[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(emailLog)
+    .orderBy(desc(emailLog.createdAt))
+    .limit(limit);
 }
 
 // Email Templates
@@ -311,3 +329,302 @@ export const emailTemplates = {
     `,
   }),
 };
+
+// Additional email templates for LGPD and Document Sharing
+export const lgpdEmailTemplates = {
+  lgpdConsent: (params: {
+    employeeName: string;
+    consentUrl: string;
+    verificationCode: string;
+    expirationDays: number;
+  }) => ({
+    subject: `[HR Docs Pro] Solicitação de Consentimento LGPD`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
+    .button { display: inline-block; background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+    .info-box { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #8b5cf6; }
+    .code-box { background: #f1f5f9; padding: 15px; border-radius: 6px; text-align: center; font-family: monospace; font-size: 24px; letter-spacing: 4px; margin: 20px 0; }
+    .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+    .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 style="margin: 0;">🔒 Consentimento LGPD</h1>
+      <p style="margin: 10px 0 0;">Lei Geral de Proteção de Dados</p>
+    </div>
+    <div class="content">
+      <p>Olá <strong>${params.employeeName}</strong>,</p>
+      
+      <p>Conforme a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018), solicitamos seu consentimento para o tratamento dos seus dados pessoais.</p>
+      
+      <div class="info-box">
+        <p><strong>O que você precisa fazer:</strong></p>
+        <ol>
+          <li>Clique no botão abaixo para acessar o termo de consentimento</li>
+          <li>Leia atentamente o documento</li>
+          <li>Use o código de verificação para confirmar sua identidade</li>
+          <li>Assine digitalmente o termo</li>
+        </ol>
+      </div>
+      
+      <p style="text-align: center;">
+        <a href="${params.consentUrl}" class="button">📝 Assinar Termo de Consentimento</a>
+      </p>
+      
+      <p><strong>Código de Verificação:</strong></p>
+      <div class="code-box">${params.verificationCode}</div>
+      
+      <div class="warning">
+        <strong>⚠️ Importante:</strong> Este link expira em <strong>${params.expirationDays} dias</strong>. Após esse período, será necessário solicitar um novo link.
+      </div>
+      
+      <p>Se você não reconhece esta solicitação ou tem dúvidas, entre em contato com o departamento de RH.</p>
+    </div>
+    <div class="footer">
+      <p>Este é um email automático do sistema HR Docs Pro.</p>
+      <p>© ${new Date().getFullYear()} HR Docs Pro - Sistema de Compliance de RH</p>
+    </div>
+  </div>
+</body>
+</html>
+    `,
+  }),
+
+  documentShare: (params: {
+    recipientName: string;
+    senderName: string;
+    employeeName: string;
+    shareUrl: string;
+    documentCount: number;
+    expirationDate: string;
+    message?: string;
+  }) => ({
+    subject: `[HR Docs Pro] Documentos Compartilhados - ${params.employeeName}`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
+    .button { display: inline-block; background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+    .info-box { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #10b981; }
+    .message-box { background: #f1f5f9; padding: 15px; border-radius: 6px; margin: 20px 0; font-style: italic; }
+    .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+    .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 style="margin: 0;">📁 Documentos Compartilhados</h1>
+    </div>
+    <div class="content">
+      <p>Olá <strong>${params.recipientName}</strong>,</p>
+      
+      <p><strong>${params.senderName}</strong> compartilhou documentos do funcionário <strong>${params.employeeName}</strong> com você.</p>
+      
+      <div class="info-box">
+        <p><strong>📄 ${params.documentCount} documento(s)</strong> disponível(is) para visualização</p>
+      </div>
+      
+      ${params.message ? `
+      <div class="message-box">
+        <p><strong>Mensagem:</strong></p>
+        <p>"${params.message}"</p>
+      </div>
+      ` : ''}
+      
+      <p style="text-align: center;">
+        <a href="${params.shareUrl}" class="button">📥 Acessar Documentos</a>
+      </p>
+      
+      <div class="warning">
+        <strong>⚠️ Atenção:</strong> Este link expira em <strong>${params.expirationDate}</strong>. Após esse período, os documentos não estarão mais disponíveis.
+      </div>
+      
+      <p>Os documentos são confidenciais e devem ser tratados de acordo com as políticas de privacidade aplicáveis.</p>
+    </div>
+    <div class="footer">
+      <p>Este é um email automático do sistema HR Docs Pro.</p>
+      <p>© ${new Date().getFullYear()} HR Docs Pro - Sistema de Compliance de RH</p>
+    </div>
+  </div>
+</body>
+</html>
+    `,
+  }),
+
+  documentSignature: (params: {
+    employeeName: string;
+    documentName: string;
+    documentType: string;
+    signatureUrl: string;
+    verificationCode: string;
+    expirationDays: number;
+  }) => ({
+    subject: `[HR Docs Pro] Solicitação de Assinatura - ${params.documentName}`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
+    .button { display: inline-block; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+    .info-box { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b; }
+    .code-box { background: #f1f5f9; padding: 15px; border-radius: 6px; text-align: center; font-family: monospace; font-size: 24px; letter-spacing: 4px; margin: 20px 0; }
+    .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+    .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 style="margin: 0;">✍️ Assinatura de Documento</h1>
+    </div>
+    <div class="content">
+      <p>Olá <strong>${params.employeeName}</strong>,</p>
+      
+      <p>Você tem um documento aguardando sua assinatura eletrônica:</p>
+      
+      <div class="info-box">
+        <p><strong>📄 Documento:</strong> ${params.documentName}</p>
+        <p><strong>📋 Tipo:</strong> ${params.documentType}</p>
+      </div>
+      
+      <p style="text-align: center;">
+        <a href="${params.signatureUrl}" class="button">✍️ Assinar Documento</a>
+      </p>
+      
+      <p><strong>Código de Verificação:</strong></p>
+      <div class="code-box">${params.verificationCode}</div>
+      
+      <div class="warning">
+        <strong>⚠️ Importante:</strong> Este link expira em <strong>${params.expirationDays} dias</strong>.
+      </div>
+      
+      <p>Se você não reconhece esta solicitação, entre em contato com o departamento de RH.</p>
+    </div>
+    <div class="footer">
+      <p>Este é um email automático do sistema HR Docs Pro.</p>
+      <p>© ${new Date().getFullYear()} HR Docs Pro - Sistema de Compliance de RH</p>
+    </div>
+  </div>
+</body>
+</html>
+    `,
+  }),
+};
+
+// Helper functions for sending specific email types
+export async function sendLgpdConsentEmail(params: {
+  employeeId: number;
+  employeeName: string;
+  employeeEmail: string;
+  consentToken: string;
+  verificationCode: string;
+  baseUrl: string;
+  createdBy?: number;
+}): Promise<{ success: boolean; logId?: number }> {
+  const consentUrl = `${params.baseUrl}/lgpd/consent/${params.consentToken}`;
+  const template = lgpdEmailTemplates.lgpdConsent({
+    employeeName: params.employeeName,
+    consentUrl,
+    verificationCode: params.verificationCode,
+    expirationDays: 7,
+  });
+
+  return await sendEmail({
+    to: params.employeeEmail,
+    toName: params.employeeName,
+    subject: template.subject,
+    html: template.html,
+    templateType: 'lgpd_consent',
+    relatedEntityType: 'employee',
+    relatedEntityId: params.employeeId,
+    createdBy: params.createdBy,
+  });
+}
+
+export async function sendDocumentShareEmail(params: {
+  recipientEmail: string;
+  recipientName: string;
+  senderName: string;
+  employeeName: string;
+  shareToken: string;
+  documentCount: number;
+  expirationDate: Date;
+  message?: string;
+  baseUrl: string;
+  createdBy?: number;
+}): Promise<{ success: boolean; logId?: number }> {
+  const shareUrl = `${params.baseUrl}/share/${params.shareToken}`;
+  const template = lgpdEmailTemplates.documentShare({
+    recipientName: params.recipientName,
+    senderName: params.senderName,
+    employeeName: params.employeeName,
+    shareUrl,
+    documentCount: params.documentCount,
+    expirationDate: params.expirationDate.toLocaleDateString('pt-BR'),
+    message: params.message,
+  });
+
+  return await sendEmail({
+    to: params.recipientEmail,
+    toName: params.recipientName,
+    subject: template.subject,
+    html: template.html,
+    templateType: 'document_share',
+    createdBy: params.createdBy,
+  });
+}
+
+export async function sendDocumentSignatureEmail(params: {
+  employeeId: number;
+  employeeName: string;
+  employeeEmail: string;
+  documentName: string;
+  documentType: string;
+  signatureToken: string;
+  verificationCode: string;
+  baseUrl: string;
+  createdBy?: number;
+}): Promise<{ success: boolean; logId?: number }> {
+  const signatureUrl = `${params.baseUrl}/signature/${params.signatureToken}`;
+  const template = lgpdEmailTemplates.documentSignature({
+    employeeName: params.employeeName,
+    documentName: params.documentName,
+    documentType: params.documentType,
+    signatureUrl,
+    verificationCode: params.verificationCode,
+    expirationDays: 7,
+  });
+
+  return await sendEmail({
+    to: params.employeeEmail,
+    toName: params.employeeName,
+    subject: template.subject,
+    html: template.html,
+    templateType: 'document_signature',
+    relatedEntityType: 'employee',
+    relatedEntityId: params.employeeId,
+    createdBy: params.createdBy,
+  });
+}

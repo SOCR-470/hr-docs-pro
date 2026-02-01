@@ -138,3 +138,23 @@
 - [x] Benchmark entre departamentos
 - [x] Comparativo holerite vs. contrato
 - [x] Histórico de alertas ao longo do tempo
+
+## Fase 3 - Melhorias Solicitadas
+
+### Integração de Envio de Emails
+- [x] Configurar serviço de notificação para envio de emails
+- [x] Envio automático de links de consentimento LGPD
+- [x] Envio automático de links de compartilhamento de documentos
+- [x] Templates de email profissionais em HTML
+
+### Geração de PDF para Comprovantes LGPD
+- [x] Gerar PDF de comprovante após assinatura de consentimento LGPD
+- [x] Incluir dados do funcionário, data/hora, IP e hash no PDF
+- [x] Armazenar PDF no S3 e vincular ao registro de consentimento
+
+### Aplicação Automática de Templates por Cargo/Função
+- [x] Vincular templates a cargos/funções no banco de dados
+- [x] Aplicar template automaticamente ao cadastrar novo funcionário
+- [x] Criar documentos pendentes na pasta do funcionário baseado no template
+- [x] Permitir adicionar documentos extras posteriormente à pasta do colaborador
+- [x] Interface para gerenciar vinculação template-cargo
