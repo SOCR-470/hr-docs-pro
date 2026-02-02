@@ -61,8 +61,18 @@ export default function SendDocuments() {
   });
 
   const sendDoc = trpc.generatedDocuments.send.useMutation({
-    onSuccess: () => {
-      toast.success("Documento enviado para assinatura");
+    onSuccess: (data) => {
+      const signatureUrl = `${window.location.origin}/signature/${data.token}`;
+      toast.success(
+        <div>
+          <p>Documento enviado para {data.email}</p>
+          <p className="text-xs mt-1">Link de assinatura:</p>
+          <a href={signatureUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 underline break-all">
+            {signatureUrl}
+          </a>
+        </div>,
+        { duration: 10000 }
+      );
       refetchDocs();
     },
     onError: (error) => {

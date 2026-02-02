@@ -36,6 +36,7 @@ export const employees = mysqlTable("employees", {
   phone: varchar("phone", { length: 20 }),
   position: varchar("position", { length: 100 }),
   departmentId: int("departmentId").references(() => departments.id),
+  birthDate: timestamp("birthDate"),
   admissionDate: timestamp("admissionDate"),
   salary: decimal("salary", { precision: 10, scale: 2 }),
   workHours: varchar("workHours", { length: 50 }).default("08:00-17:00"),

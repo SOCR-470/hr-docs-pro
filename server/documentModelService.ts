@@ -497,8 +497,31 @@ export async function verifyIdentityForSignature(
     return { success: false, error: "CPF não confere" };
   }
 
-  // Verificar código (se enviado por email)
-  if (doc.document.verificationCode && code !== doc.document.verificationCode) {
+  // Verificar data de nascimento (se disponível)
+  if (doc.employee?.birthDate && birthDate) {
+    const employeeBirthDate = new Date(doc.employee.birthDate);
+    const inputBirthDate = new Date(birthDate);
+    
+    // Comparar apenas ano, mês e dia (ignorar hora)
+    const employeeDateStr = employeeBirthDate.toISOString().split('T')[0];
+    const inputDateStr = inputBirthDate.toISOString().split('T')[0];
+    
+    if (employeeDateStr !== inputDateStr) {
+      await db.update(generatedDocuments)
+        .set({ 
+          verificationAttempts: (doc.document.verificationAttempts || 0) + 1,
+          updatedAt: new Date()
+        })
+        .where(eq(generatedDocuments.id, doc.document.id));
+      
+      return { success: false, error: "Data de nascimento não confere" };
+    }
+  }
+
+  // Verificar código (se enviado por email E se o usuário preencheu)
+  // Se o código foi enviado por email e o usuário preencheu um código, valida
+  // Se o usuário não preencheu código, permite continuar (validação apenas por CPF + data nascimento)
+  if (doc.document.verificationCode && code && code.trim() !== '' && code !== doc.document.verificationCode) {
     await db.update(generatedDocuments)
       .set({ 
         verificationAttempts: (doc.document.verificationAttempts || 0) + 1,

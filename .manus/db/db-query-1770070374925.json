@@ -1,0 +1,36 @@
+{
+  "query": "SELECT * FROM checklist_templates LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mtZxA1eif6Rx6U.422d1d9c9bcb --database 7ooe5noxFCRmFoZp7tW7Q3 --execute SELECT * FROM checklist_templates LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Onboarding Padrão",
+      "type": "onboarding",
+      "description": "Checklist padrão para admissão de novos funcionários",
+      "departmentId": "NULL",
+      "position": "NULL",
+      "isDefault": "1",
+      "isActive": "1",
+      "createdBy": "1",
+      "createdAt": "2026-02-02 20:42:21",
+      "updatedAt": "2026-02-02 20:42:21"
+    },
+    {
+      "id": "2",
+      "name": "Offboarding Padrão",
+      "type": "offboarding",
+      "description": "Checklist padrão para desligamento de funcionários",
+      "departmentId": "NULL",
+      "position": "NULL",
+      "isDefault": "1",
+      "isActive": "1",
+      "createdBy": "1",
+      "createdAt": "2026-02-02 20:42:22",
+      "updatedAt": "2026-02-02 20:42:22"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\ttype\tdescription\tdepartmentId\tposition\tisDefault\tisActive\tcreatedBy\tcreatedAt\tupdatedAt\n1\tOnboarding Padrão\tonboarding\tChecklist padrão para admissão de novos funcionários\tNULL\tNULL\t1\t1\t1\t2026-02-02 20:42:21\t2026-02-02 20:42:21\n2\tOffboarding Padrão\toffboarding\tChecklist padrão para desligamento de funcionários\tNULL\tNULL\t1\t1\t1\t2026-02-02 20:42:22\t2026-02-02 20:42:22\n",
+  "stderr": "",
+  "execution_time_ms": 387
+}

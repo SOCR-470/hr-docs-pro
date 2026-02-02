@@ -31,7 +31,7 @@ function Router() {
   return (
     <Switch>
       {/* Public route - Document signing (no auth required) */}
-      <Route path="/sign/:token">
+      <Route path="/signature/:token">
         {(params) => <SignDocument token={params.token} />}
       </Route>
       

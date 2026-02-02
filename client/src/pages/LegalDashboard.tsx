@@ -90,7 +90,7 @@ export default function LegalDashboard() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Link href="/lawsuits/new">
+          <Link href="/lawsuits">
             <Button>
               <Gavel className="h-4 w-4 mr-2" />
               Novo Processo

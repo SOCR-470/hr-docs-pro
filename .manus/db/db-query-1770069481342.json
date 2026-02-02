@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE employees SET birthDate = '1990-01-15' WHERE cpf = '123.456.789-00';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mtZxA1eif6Rx6U.422d1d9c9bcb --database 7ooe5noxFCRmFoZp7tW7Q3 --execute UPDATE employees SET birthDate = '1990-01-15' WHERE cpf = '123.456.789-00';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 440
+}

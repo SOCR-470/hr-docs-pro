@@ -296,7 +296,7 @@
 - [x] Alertas de férias vencendo (prazo legal 12 meses)
 - [ ] Geração automática de aviso e recibo de férias
 - [x] Dashboard de férias por departamento
-- [ ] Calendário visual de férias da equipe
+- [x] Calendário visual de férias da equipe
 
 ### Gestão de Benefícios
 - [x] Tabela de tipos de benefícios (VT, VR/VA, plano de saúde, etc.)
@@ -340,6 +340,13 @@
 - [x] Integração na página de Férias e Afastamentos
 
 ## Fase 10 - Segurança Jurídica nas Assinaturas
+
+### Correções Aplicadas Durante Testes
+- [x] Campo birthDate adicionado na tabela employees
+- [x] Verificação de identidade ajustada (código opcional)
+- [x] Link de assinatura exibido após envio do documento
+- [x] Rota /signature/:token corrigida no App.tsx
+- [x] Link de Novo Processo corrigido no LegalDashboard
 
 ### Hash SHA-256
 - [x] Gerar hash SHA-256 do PDF no momento da assinatura
