@@ -219,7 +219,7 @@ export default function Reports() {
                     <SelectValue placeholder="Todos os departamentos" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos os departamentos</SelectItem>
+                    <SelectItem value="all">Todos os departamentos</SelectItem>
                     {departments?.map((dept) => (
                       <SelectItem key={dept.id} value={dept.id.toString()}>
                         {dept.name}
