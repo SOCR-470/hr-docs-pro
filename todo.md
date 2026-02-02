@@ -363,3 +363,34 @@
 - [x] Adicionar campo documentHash na tabela generatedDocuments
 - [x] Adicionar campo certificateUrl na tabela generatedDocuments
 - [x] Adicionar campo certificateKey na tabela generatedDocuments
+
+
+## Fase 11 - Sistema de Login Híbrido
+
+### Schema do Banco
+- [x] Adicionar campo passwordHash na tabela user
+- [x] Adicionar campo emailVerified na tabela user
+- [x] Adicionar campo authMethod (oauth/password) na tabela user
+- [x] Criar tabela passwordResetTokens para recuperação de senha
+
+### Backend - Endpoints de Autenticação
+- [x] Endpoint de login com email/senha
+- [x] Endpoint de registro de novo usuário (apenas admin pode criar)
+- [x] Endpoint de recuperação de senha (envio de email)
+- [x] Endpoint de reset de senha (com token)
+- [x] Endpoint de alteração de senha
+- [x] Hash seguro de senhas com bcrypt
+
+### Frontend - Páginas
+- [x] Página de login com opção OAuth ou email/senha
+- [x] Página de gestão de usuários (admin)
+- [x] Modal de criação de usuário com senha
+- [x] Página de recuperação de senha
+- [ ] Página de reset de senha (com token)
+- [ ] Página de alteração de senha (usuário logado)
+
+### Segurança
+- [ ] Validação de força de senha
+- [ ] Rate limiting em tentativas de login
+- [ ] Expiração de tokens de recuperação
+- [ ] Logs de tentativas de login

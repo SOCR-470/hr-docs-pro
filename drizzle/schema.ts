@@ -3,11 +3,15 @@ import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, decimal,
 // ============ USERS (Auth) ============
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
+  openId: varchar("openId", { length: 64 }).unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  // Campos para login com senha
+  passwordHash: varchar("passwordHash", { length: 255 }),
+  authMethod: mysqlEnum("authMethod", ["oauth", "password"]).default("oauth").notNull(),
+  emailVerified: boolean("emailVerified").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -1394,3 +1398,41 @@ export const notificationDigests = mysqlTable("notification_digests", {
 
 export type NotificationDigest = typeof notificationDigests.$inferSelect;
 export type InsertNotificationDigest = typeof notificationDigests.$inferInsert;
+
+
+// ============ PASSWORD RESET TOKENS (Recuperação de Senha) ============
+export const passwordResetTokens = mysqlTable("password_reset_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id).notNull(),
+  
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  
+  // Metadados de segurança
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  userAgent: text("userAgent"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
+
+// ============ LOGIN ATTEMPTS (Tentativas de Login - Rate Limiting) ============
+export const loginAttempts = mysqlTable("login_attempts", {
+  id: int("id").autoincrement().primaryKey(),
+  
+  email: varchar("email", { length: 320 }).notNull(),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  
+  success: boolean("success").default(false),
+  failureReason: varchar("failureReason", { length: 100 }),
+  
+  userAgent: text("userAgent"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type LoginAttempt = typeof loginAttempts.$inferSelect;
+export type InsertLoginAttempt = typeof loginAttempts.$inferInsert;

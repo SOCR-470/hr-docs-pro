@@ -57,6 +57,13 @@
       "when": 1770069449909,
       "tag": "0007_heavy_cerebro",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1770074204856,
+      "tag": "0008_brief_gorilla_man",
+      "breakpoints": true
     }
   ]
 }

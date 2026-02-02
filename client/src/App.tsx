@@ -26,11 +26,24 @@ import Vacations from "./pages/Vacations";
 import Benefits from "./pages/Benefits";
 import Checklists from "./pages/Checklists";
 import Notifications from "./pages/Notifications";
+import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import Users from "./pages/Users";
 
 function Router() {
   return (
     <Switch>
-      {/* Public route - Document signing (no auth required) */}
+      {/* Public routes - No auth required */}
+      <Route path="/login">
+        <Login />
+      </Route>
+      <Route path="/forgot-password">
+        <ForgotPassword />
+      </Route>
+      <Route path="/reset-password/:token">
+        {(params) => <ResetPassword />}
+      </Route>
       <Route path="/signature/:token">
         {(params) => <SignDocument token={params.token} />}
       </Route>
@@ -115,6 +128,11 @@ function Router() {
       <Route path="/notifications">
         <DashboardLayout>
           <Notifications />
+        </DashboardLayout>
+      </Route>
+      <Route path="/users">
+        <DashboardLayout>
+          <Users />
         </DashboardLayout>
       </Route>
       

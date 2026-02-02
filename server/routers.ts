@@ -25,6 +25,7 @@ import * as vacationService from "./vacationService";
 import * as benefitService from "./benefitService";
 import * as checklistService from "./checklistService";
 import * as notificationService from "./notificationService";
+import * as authService from "./authService";
 
 // Admin-only procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -44,6 +45,180 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+    
+    // Login com email/senha
+    loginWithPassword: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string().min(1),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const ipAddress = ctx.req.ip || ctx.req.headers['x-forwarded-for']?.toString();
+        const userAgent = ctx.req.headers['user-agent'];
+        
+        const result = await authService.loginWithPassword(
+          input.email,
+          input.password,
+          ipAddress,
+          userAgent
+        );
+        
+        if (!result.success || !result.user) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: result.error || 'Falha no login' });
+        }
+        
+        // Criar sessão JWT
+        const { sdk } = await import('./_core/sdk');
+        const sessionToken = await sdk.createSessionToken(result.user.openId!, { name: result.user.name || '' });
+        
+        // Definir cookie
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, cookieOptions);
+        
+        return { success: true, user: result.user };
+      }),
+    
+    // Recuperação de senha - solicitar token
+    requestPasswordReset: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const ipAddress = ctx.req.ip || ctx.req.headers['x-forwarded-for']?.toString();
+        const userAgent = ctx.req.headers['user-agent'];
+        
+        const result = await authService.createPasswordResetToken(
+          input.email,
+          ipAddress,
+          userAgent
+        );
+        
+        // Se tiver token, enviar email (não revelar se email existe)
+        if (result.token) {
+          // TODO: Enviar email com link de recuperação
+          // Por enquanto, retornar o token para testes
+          console.log(`[Auth] Password reset token for ${input.email}: ${result.token}`);
+        }
+        
+        return { success: true, message: 'Se o email estiver cadastrado, você receberá instruções para redefinir sua senha.' };
+      }),
+    
+    // Recuperação de senha - redefinir com token
+    resetPassword: publicProcedure
+      .input(z.object({
+        token: z.string(),
+        newPassword: z.string().min(8),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const ipAddress = ctx.req.ip || ctx.req.headers['x-forwarded-for']?.toString();
+        
+        const result = await authService.resetPasswordWithToken(
+          input.token,
+          input.newPassword,
+          ipAddress
+        );
+        
+        if (!result.success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: result.error || 'Falha ao redefinir senha' });
+        }
+        
+        return { success: true };
+      }),
+    
+    // Alterar senha (usuário logado)
+    changePassword: protectedProcedure
+      .input(z.object({
+        currentPassword: z.string(),
+        newPassword: z.string().min(8),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await authService.changePassword(
+          ctx.user.id,
+          input.currentPassword,
+          input.newPassword
+        );
+        
+        if (!result.success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: result.error || 'Falha ao alterar senha' });
+        }
+        
+        return { success: true };
+      }),
+  }),
+  
+  // ============ GESTÃO DE USUÁRIOS (ADMIN) ============
+  users: router({
+    list: adminProcedure.query(async () => {
+      return authService.listUsers();
+    }),
+    
+    create: adminProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string().min(8),
+        name: z.string().min(1),
+        role: z.enum(['user', 'admin']).default('user'),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await authService.createUserWithPassword(
+          input.email,
+          input.password,
+          input.name,
+          input.role,
+          ctx.user.id
+        );
+        
+        if (!result.success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: result.error || 'Falha ao criar usuário' });
+        }
+        
+        return result.user;
+      }),
+    
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        email: z.string().email().optional(),
+        role: z.enum(['user', 'admin']).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        const result = await authService.updateUser(id, data);
+        
+        if (!result.success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: result.error || 'Falha ao atualizar usuário' });
+        }
+        
+        return { success: true };
+      }),
+    
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await authService.deleteUser(input.id, ctx.user.id);
+        
+        if (!result.success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: result.error || 'Falha ao excluir usuário' });
+        }
+        
+        return { success: true };
+      }),
+    
+    resetPassword: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        newPassword: z.string().min(8),
+      }))
+      .mutation(async ({ input }) => {
+        const result = await authService.adminResetPassword(input.id, input.newPassword);
+        
+        if (!result.success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: result.error || 'Falha ao redefinir senha' });
+        }
+        
+        return { success: true };
+      }),
   }),
 
   // ============ DASHBOARD ============
