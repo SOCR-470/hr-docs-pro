@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
+import VacationCalendar from "@/components/VacationCalendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -128,6 +129,7 @@ export default function Vacations() {
   const { data: leaves } = trpc.leaves.list.useQuery({});
   const { data: leaveSummary } = trpc.leaves.summary.useQuery();
   const { data: employees } = trpc.employees.list.useQuery({});
+  const { data: departments } = trpc.departments.list.useQuery();
   
   // Mutations
   const initializeMutation = trpc.vacations.initialize.useMutation({
@@ -360,6 +362,7 @@ export default function Vacations() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-slate-800">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+            <TabsTrigger value="calendar">Calendário</TabsTrigger>
             <TabsTrigger value="requests">Solicitações</TabsTrigger>
             <TabsTrigger value="leaves">Afastamentos</TabsTrigger>
           </TabsList>
@@ -413,6 +416,14 @@ export default function Vacations() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+          
+          <TabsContent value="calendar" className="mt-4">
+            <VacationCalendar
+              vacations={requests || []}
+              leaves={leaves || []}
+              departments={departments || []}
+            />
           </TabsContent>
           
           <TabsContent value="requests" className="mt-4">

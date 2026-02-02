@@ -327,3 +327,14 @@
 - [ ] Lembretes automáticos de vencimentos
 - [x] Painel de notificações no sistema (bell icon)
 - [x] Configuração de preferências de notificação
+
+## Fase 9 - Calendário Visual de Férias
+
+### Calendário Visual
+- [x] Componente de calendário mensal/anual
+- [x] Visualização de férias aprovadas/agendadas por funcionário
+- [x] Filtro por departamento
+- [x] Cores diferenciadas por tipo (férias, afastamento)
+- [x] Tooltip com detalhes ao passar o mouse
+- [x] Navegação entre meses
+- [x] Integração na página de Férias e Afastamentos
