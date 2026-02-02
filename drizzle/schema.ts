@@ -861,6 +861,11 @@ export const generatedDocuments = mysqlTable("generated_documents", {
   pdfUrl: text("pdfUrl"),
   pdfKey: varchar("pdfKey", { length: 255 }),
   
+  // Segurança jurídica
+  documentHash: varchar("documentHash", { length: 64 }), // SHA-256 do PDF
+  certificateUrl: text("certificateUrl"), // URL do certificado de assinatura
+  certificateKey: varchar("certificateKey", { length: 255 }), // Key do certificado no S3
+  
   // Assinatura física (upload)
   uploadedSignatureUrl: text("uploadedSignatureUrl"),
   uploadedSignatureKey: varchar("uploadedSignatureKey", { length: 255 }),

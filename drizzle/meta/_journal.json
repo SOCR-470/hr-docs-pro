@@ -43,6 +43,13 @@
       "when": 1770063853722,
       "tag": "0005_unusual_ghost_rider",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1770067680575,
+      "tag": "0006_curved_toxin",
+      "breakpoints": true
     }
   ]
 }

@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "35807dd5-5064-4ca7-9ef1-c695d8d62125",
-  "prevId": "c0709b39-3078-426a-926b-e3d510ad9c6f",
+  "id": "ad20a0ff-b45c-4101-8610-fc6f9194caf1",
+  "prevId": "35807dd5-5064-4ca7-9ef1-c695d8d62125",
   "tables": {
     "audit_log": {
       "name": "audit_log",
@@ -3352,6 +3352,27 @@
         },
         "pdfKey": {
           "name": "pdfKey",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "documentHash": {
+          "name": "documentHash",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "certificateUrl": {
+          "name": "certificateUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "certificateKey": {
+          "name": "certificateKey",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false,

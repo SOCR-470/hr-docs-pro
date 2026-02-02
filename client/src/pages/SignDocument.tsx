@@ -28,6 +28,7 @@ export default function SignDocument({ token }: SignDocumentProps) {
   const [step, setStep] = useState<"verify" | "view" | "sign" | "success" | "error">("verify");
   const [errorMessage, setErrorMessage] = useState("");
   const [isVerified, setIsVerified] = useState(false);
+  const [certificateUrl, setCertificateUrl] = useState<string | null>(null);
   const [signatureType, setSignatureType] = useState<"drawn" | "typed" | "uploaded">("drawn");
   const [signatureImage, setSignatureImage] = useState("");
   const [typedSignature, setTypedSignature] = useState("");
@@ -73,7 +74,10 @@ export default function SignDocument({ token }: SignDocumentProps) {
   });
   
   const signDocument = trpc.generatedDocuments.sign.useMutation({
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result.certificateUrl) {
+        setCertificateUrl(result.certificateUrl);
+      }
       setStep("success");
       toast.success("Documento assinado com sucesso!");
     },
@@ -256,17 +260,42 @@ export default function SignDocument({ token }: SignDocumentProps) {
   if (step === "success") {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-lg">
           <CardContent className="flex flex-col items-center py-12">
             <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
             <h2 className="text-xl font-bold mb-2">Documento Assinado!</h2>
             <p className="text-muted-foreground text-center mb-4">
               Sua assinatura foi registrada com sucesso. Você receberá uma cópia por email.
             </p>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-800">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-800 mb-4">
               <Shield className="h-4 w-4 inline mr-2" />
               Assinatura digital válida conforme MP 2.200-2/2001
             </div>
+            
+            {certificateUrl && (
+              <div className="w-full space-y-3">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-blue-800 mb-2 flex items-center">
+                    <Shield className="h-4 w-4 mr-2" />
+                    Certificado de Assinatura
+                  </h3>
+                  <p className="text-sm text-blue-700 mb-3">
+                    Um certificado com todos os dados da assinatura foi gerado para garantir a validade jurídica do documento.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-blue-300 text-blue-700 hover:bg-blue-100"
+                    onClick={() => window.open(certificateUrl, '_blank')}
+                  >
+                    <FileSignature className="h-4 w-4 mr-2" />
+                    Visualizar Certificado
+                  </Button>
+                </div>
+                <p className="text-xs text-center text-muted-foreground">
+                  O certificado contém: hash SHA-256 do documento, dados do signatário, IP, data/hora e fundamentação legal.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

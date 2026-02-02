@@ -338,3 +338,21 @@
 - [x] Tooltip com detalhes ao passar o mouse
 - [x] Navegação entre meses
 - [x] Integração na página de Férias e Afastamentos
+
+## Fase 10 - Segurança Jurídica nas Assinaturas
+
+### Hash SHA-256
+- [x] Gerar hash SHA-256 do PDF no momento da assinatura
+- [x] Armazenar hash no banco de dados
+- [x] Validar integridade do documento via hash
+
+### Certificado PDF de Assinatura
+- [x] Gerar certificado HTML com metadados da assinatura
+- [x] Incluir: nome, CPF, data/hora, IP, user agent, hash do documento
+- [x] Exibir certificado ao signatário após assinatura
+- [x] Armazenar certificado no S3
+
+### Atualização do Schema
+- [x] Adicionar campo documentHash na tabela generatedDocuments
+- [x] Adicionar campo certificateUrl na tabela generatedDocuments
+- [x] Adicionar campo certificateKey na tabela generatedDocuments

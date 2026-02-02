@@ -512,7 +512,174 @@ export async function verifyIdentityForSignature(
   return { success: true };
 }
 
-// Assinar documento
+// Gerar hash SHA-256 de um conteúdo
+export function generateSHA256Hash(content: string): string {
+  return crypto.createHash('sha256').update(content, 'utf8').digest('hex');
+}
+
+// Gerar certificado de assinatura em HTML
+function generateSignatureCertificateHTML(
+  doc: { document: any; employee: any; model: any },
+  signedName: string,
+  signedCpf: string,
+  signedBirthDate: string,
+  signatureImage: string,
+  signatureType: string,
+  ipAddress: string,
+  userAgent: string,
+  documentHash: string,
+  signedAt: Date
+): string {
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZone: 'America/Sao_Paulo'
+    });
+  };
+
+  const formatCpf = (cpf: string) => {
+    const clean = cpf.replace(/\D/g, '');
+    return `${clean.slice(0,3)}.${clean.slice(3,6)}.${clean.slice(6,9)}-${clean.slice(9,11)}`;
+  };
+
+  const signatureTypeLabel = {
+    drawn: 'Assinatura Desenhada',
+    typed: 'Assinatura Digitada',
+    uploaded: 'Assinatura Enviada (Upload)'
+  }[signatureType] || signatureType;
+
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Certificado de Assinatura Eletrônica</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #1f2937; }
+    .container { max-width: 800px; margin: 0 auto; padding: 40px; }
+    .header { text-align: center; border-bottom: 3px solid #059669; padding-bottom: 20px; margin-bottom: 30px; }
+    .header h1 { color: #059669; font-size: 18pt; margin-bottom: 5px; }
+    .header p { color: #6b7280; font-size: 10pt; }
+    .shield { font-size: 48px; margin-bottom: 10px; }
+    .section { margin-bottom: 25px; }
+    .section-title { background: #f3f4f6; padding: 8px 15px; font-weight: bold; color: #374151; border-left: 4px solid #059669; margin-bottom: 15px; }
+    .info-grid { display: grid; grid-template-columns: 180px 1fr; gap: 8px 15px; padding: 0 15px; }
+    .info-label { font-weight: bold; color: #6b7280; }
+    .info-value { color: #1f2937; }
+    .hash-box { background: #f9fafb; border: 1px solid #e5e7eb; padding: 15px; font-family: monospace; font-size: 9pt; word-break: break-all; margin: 15px; border-radius: 4px; }
+    .signature-box { text-align: center; padding: 20px; margin: 15px; border: 2px dashed #d1d5db; border-radius: 8px; }
+    .signature-box img { max-width: 300px; max-height: 100px; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 9pt; color: #6b7280; }
+    .validity { background: #ecfdf5; border: 1px solid #059669; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 15px; }
+    .validity-icon { color: #059669; font-size: 24px; }
+    .validity-text { color: #059669; font-weight: bold; }
+    .legal-text { font-size: 9pt; color: #6b7280; padding: 15px; text-align: justify; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="shield">🛡️</div>
+      <h1>CERTIFICADO DE ASSINATURA ELETRÔNICA</h1>
+      <p>Documento assinado eletronicamente conforme MP 2.200-2/2001</p>
+    </div>
+
+    <div class="validity">
+      <div class="validity-icon">✓</div>
+      <div class="validity-text">DOCUMENTO ASSINADO COM VALIDADE JURÍDICA</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">DADOS DO DOCUMENTO</div>
+      <div class="info-grid">
+        <span class="info-label">Documento:</span>
+        <span class="info-value">${doc.model?.name || 'Documento'}</span>
+        <span class="info-label">ID do Documento:</span>
+        <span class="info-value">#${doc.document.id}</span>
+        <span class="info-label">Token de Acesso:</span>
+        <span class="info-value">${doc.document.token}</span>
+        <span class="info-label">Data de Geração:</span>
+        <span class="info-value">${formatDate(new Date(doc.document.createdAt))}</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">DADOS DO SIGNATÁRIO</div>
+      <div class="info-grid">
+        <span class="info-label">Nome Completo:</span>
+        <span class="info-value">${signedName}</span>
+        <span class="info-label">CPF:</span>
+        <span class="info-value">${formatCpf(signedCpf)}</span>
+        <span class="info-label">Data de Nascimento:</span>
+        <span class="info-value">${signedBirthDate}</span>
+        <span class="info-label">Funcionário:</span>
+        <span class="info-value">${doc.employee?.name || 'N/A'} (ID: ${doc.employee?.id || 'N/A'})</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">DADOS DA ASSINATURA</div>
+      <div class="info-grid">
+        <span class="info-label">Data/Hora:</span>
+        <span class="info-value">${formatDate(signedAt)}</span>
+        <span class="info-label">Tipo de Assinatura:</span>
+        <span class="info-value">${signatureTypeLabel}</span>
+        <span class="info-label">Endereço IP:</span>
+        <span class="info-value">${ipAddress}</span>
+        <span class="info-label">Navegador:</span>
+        <span class="info-value">${userAgent.substring(0, 100)}${userAgent.length > 100 ? '...' : ''}</span>
+      </div>
+      <div class="signature-box">
+        <p style="margin-bottom: 10px; font-weight: bold;">Assinatura Capturada:</p>
+        ${signatureImage ? `<img src="${signatureImage}" alt="Assinatura" />` : '<p style="color: #6b7280;">Assinatura não disponível</p>'}
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">HASH DE INTEGRIDADE (SHA-256)</div>
+      <div class="hash-box">
+        ${documentHash}
+      </div>
+      <p class="legal-text">
+        O hash acima é uma impressão digital única do documento original. Qualquer alteração no conteúdo 
+        do documento resultará em um hash diferente, permitindo verificar se o documento foi modificado 
+        após a assinatura.
+      </p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">FUNDAMENTAÇÃO LEGAL</div>
+      <p class="legal-text">
+        Este documento foi assinado eletronicamente em conformidade com a <strong>Medida Provisória nº 2.200-2/2001</strong>, 
+        que institui a Infraestrutura de Chaves Públicas Brasileira (ICP-Brasil) e estabelece, em seu artigo 10, § 2º, 
+        que "o disposto nesta Medida Provisória não obsta a utilização de outro meio de comprovação da autoria e 
+        integridade de documentos em forma eletrônica, inclusive os que utilizem certificados não emitidos pela ICP-Brasil, 
+        desde que admitido pelas partes como válido ou aceito pela pessoa a quem for oposto o documento".
+      </p>
+      <p class="legal-text">
+        A assinatura eletrônica aqui registrada possui validade jurídica e probatória, sendo admitida como prova em 
+        processos judiciais e administrativos, conforme entendimento consolidado dos tribunais brasileiros.
+      </p>
+    </div>
+
+    <div class="footer">
+      <p><strong>HR Docs Pro</strong> - Sistema de Gestão de Documentos de RH</p>
+      <p>Certificado gerado automaticamente em ${formatDate(new Date())}</p>
+      <p>Este certificado é parte integrante do documento assinado e não possui validade isoladamente.</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+}
+
+// Assinar documento com hash e certificado
 export async function signDocument(
   token: string,
   signedName: string,
@@ -522,18 +689,65 @@ export async function signDocument(
   signatureType: "drawn" | "typed" | "uploaded",
   ipAddress: string,
   userAgent: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; certificateUrl?: string }> {
   const doc = await getGeneratedDocumentByToken(token);
 
   if (!doc) {
     return { success: false, error: "Documento não encontrado" };
   }
 
-  // Atualizar com assinatura
+  const signedAt = new Date();
+  
+  // Gerar hash SHA-256 do conteúdo do documento
+  const contentToHash = JSON.stringify({
+    documentId: doc.document.id,
+    token: doc.document.token,
+    content: doc.document.generatedContent,
+    employeeId: doc.employee?.id,
+    employeeName: doc.employee?.name,
+    employeeCpf: doc.employee?.cpf,
+    signedName,
+    signedCpf,
+    signedBirthDate,
+    signedAt: signedAt.toISOString(),
+    ipAddress,
+    userAgent
+  });
+  const documentHash = generateSHA256Hash(contentToHash);
+
+  // Gerar certificado de assinatura em HTML
+  const certificateHTML = generateSignatureCertificateHTML(
+    doc,
+    signedName,
+    signedCpf,
+    signedBirthDate,
+    signatureImage,
+    signatureType,
+    ipAddress,
+    userAgent,
+    documentHash,
+    signedAt
+  );
+
+  // Salvar certificado no S3
+  let certificateUrl = null;
+  let certificateKey = null;
+  try {
+    const certificateBuffer = Buffer.from(certificateHTML, 'utf-8');
+    const certKey = `certificates/${doc.document.id}-${Date.now()}.html`;
+    const result = await storagePut(certKey, certificateBuffer, 'text/html');
+    certificateUrl = result.url;
+    certificateKey = certKey;
+  } catch (error) {
+    console.error('Erro ao salvar certificado:', error);
+    // Continua mesmo se falhar o upload do certificado
+  }
+
+  // Atualizar com assinatura, hash e certificado
   await db.update(generatedDocuments)
     .set({
       status: "signed",
-      signedAt: new Date(),
+      signedAt,
       signedName,
       signedCpf,
       signedBirthDate,
@@ -541,11 +755,14 @@ export async function signDocument(
       signatureType,
       ipAddress,
       userAgent,
+      documentHash,
+      certificateUrl,
+      certificateKey,
       updatedAt: new Date()
     })
     .where(eq(generatedDocuments.id, doc.document.id));
 
-  return { success: true };
+  return { success: true, certificateUrl: certificateUrl || undefined };
 }
 
 // Modelos padrão para criar automaticamente
