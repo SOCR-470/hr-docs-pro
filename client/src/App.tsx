@@ -22,6 +22,10 @@ import CourtCommunications from "./pages/CourtCommunications";
 import DocumentModels from "./pages/DocumentModels";
 import SendDocuments from "./pages/SendDocuments";
 import SignDocument from "./pages/SignDocument";
+import Vacations from "./pages/Vacations";
+import Benefits from "./pages/Benefits";
+import Checklists from "./pages/Checklists";
+import Notifications from "./pages/Notifications";
 
 function Router() {
   return (
@@ -89,6 +93,28 @@ function Router() {
       <Route path="/send-documents">
         <DashboardLayout>
           <SendDocuments />
+        </DashboardLayout>
+      </Route>
+      
+      {/* Vacations and Benefits Routes */}
+      <Route path="/vacations">
+        <DashboardLayout>
+          <Vacations />
+        </DashboardLayout>
+      </Route>
+      <Route path="/benefits">
+        <DashboardLayout>
+          <Benefits />
+        </DashboardLayout>
+      </Route>
+      <Route path="/checklists">
+        <DashboardLayout>
+          <Checklists />
+        </DashboardLayout>
+      </Route>
+      <Route path="/notifications">
+        <DashboardLayout>
+          <Notifications />
         </DashboardLayout>
       </Route>
       

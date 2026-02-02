@@ -921,3 +921,470 @@ export const companySettings = mysqlTable("company_settings", {
 
 export type CompanySettings = typeof companySettings.$inferSelect;
 export type InsertCompanySettings = typeof companySettings.$inferInsert;
+
+
+// ============ VACATION MANAGEMENT (Gestão de Férias) ============
+export const vacations = mysqlTable("vacations", {
+  id: int("id").autoincrement().primaryKey(),
+  employeeId: int("employeeId").references(() => employees.id).notNull(),
+  
+  // Período aquisitivo
+  acquisitivePeriodStart: timestamp("acquisitivePeriodStart").notNull(),
+  acquisitivePeriodEnd: timestamp("acquisitivePeriodEnd").notNull(),
+  
+  // Período concessivo (12 meses após fim do aquisitivo)
+  concessivePeriodEnd: timestamp("concessivePeriodEnd").notNull(),
+  
+  // Dias de direito e utilizados
+  totalDays: int("totalDays").default(30).notNull(),
+  usedDays: int("usedDays").default(0).notNull(),
+  soldDays: int("soldDays").default(0), // Abono pecuniário (máx 10 dias)
+  remainingDays: int("remainingDays").default(30).notNull(),
+  
+  // Status do período
+  status: mysqlEnum("status", [
+    "acquiring", // Em aquisição
+    "available", // Disponível para gozo
+    "scheduled", // Agendada
+    "in_progress", // Em gozo
+    "completed", // Concluída
+    "expired" // Vencida (não gozada no prazo)
+  ]).default("acquiring").notNull(),
+  
+  // Alertas
+  expirationAlertSent: boolean("expirationAlertSent").default(false),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Vacation = typeof vacations.$inferSelect;
+export type InsertVacation = typeof vacations.$inferInsert;
+
+// ============ VACATION REQUESTS (Solicitações de Férias) ============
+export const vacationRequests = mysqlTable("vacation_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  vacationId: int("vacationId").references(() => vacations.id).notNull(),
+  employeeId: int("employeeId").references(() => employees.id).notNull(),
+  
+  // Período solicitado
+  startDate: timestamp("startDate").notNull(),
+  endDate: timestamp("endDate").notNull(),
+  daysRequested: int("daysRequested").notNull(),
+  
+  // Abono pecuniário
+  sellDays: int("sellDays").default(0), // Dias a vender (máx 10)
+  
+  // Adiantamento de 13º
+  advance13th: boolean("advance13th").default(false),
+  
+  // Workflow de aprovação
+  status: mysqlEnum("status", [
+    "pending", // Aguardando aprovação
+    "approved", // Aprovada
+    "rejected", // Rejeitada
+    "cancelled", // Cancelada pelo funcionário
+    "in_progress", // Em gozo
+    "completed" // Concluída
+  ]).default("pending").notNull(),
+  
+  // Aprovação
+  approvedBy: int("approvedBy").references(() => users.id),
+  approvedAt: timestamp("approvedAt"),
+  rejectionReason: text("rejectionReason"),
+  
+  // Documentos gerados
+  noticeDocumentId: int("noticeDocumentId").references(() => documents.id), // Aviso de férias
+  receiptDocumentId: int("receiptDocumentId").references(() => documents.id), // Recibo de férias
+  
+  // Observações
+  notes: text("notes"),
+  
+  requestedBy: int("requestedBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type VacationRequest = typeof vacationRequests.$inferSelect;
+export type InsertVacationRequest = typeof vacationRequests.$inferInsert;
+
+// ============ LEAVES (Afastamentos) ============
+export const leaves = mysqlTable("leaves", {
+  id: int("id").autoincrement().primaryKey(),
+  employeeId: int("employeeId").references(() => employees.id).notNull(),
+  
+  // Tipo de afastamento
+  leaveType: mysqlEnum("leaveType", [
+    "medical", // Licença médica
+    "maternity", // Licença maternidade
+    "paternity", // Licença paternidade
+    "marriage", // Licença casamento
+    "bereavement", // Licença óbito
+    "military", // Serviço militar
+    "jury_duty", // Júri
+    "blood_donation", // Doação de sangue
+    "election", // Eleição
+    "accident", // Acidente de trabalho
+    "unpaid", // Licença não remunerada
+    "other"
+  ]).notNull(),
+  
+  // Período
+  startDate: timestamp("startDate").notNull(),
+  endDate: timestamp("endDate"),
+  expectedReturnDate: timestamp("expectedReturnDate"),
+  actualReturnDate: timestamp("actualReturnDate"),
+  
+  // Documentação
+  documentUrl: text("documentUrl"), // Atestado, certidão, etc.
+  documentKey: varchar("documentKey", { length: 255 }),
+  documentName: varchar("documentName", { length: 255 }),
+  
+  // Para licença médica
+  cid: varchar("cid", { length: 10 }), // Código CID
+  doctorName: varchar("doctorName", { length: 200 }),
+  doctorCrm: varchar("doctorCrm", { length: 20 }),
+  
+  // INSS (para afastamentos > 15 dias)
+  inssRequired: boolean("inssRequired").default(false),
+  inssProtocol: varchar("inssProtocol", { length: 50 }),
+  inssStartDate: timestamp("inssStartDate"),
+  
+  // Status
+  status: mysqlEnum("status", [
+    "active", // Em andamento
+    "completed", // Concluído
+    "cancelled" // Cancelado
+  ]).default("active").notNull(),
+  
+  // Observações
+  notes: text("notes"),
+  
+  createdBy: int("createdBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Leave = typeof leaves.$inferSelect;
+export type InsertLeave = typeof leaves.$inferInsert;
+
+// ============ BENEFITS TYPES (Tipos de Benefícios) ============
+export const benefitTypes = mysqlTable("benefit_types", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  code: varchar("code", { length: 20 }).notNull().unique(), // VT, VR, VA, PS, etc.
+  description: text("description"),
+  category: mysqlEnum("category", [
+    "transport", // Vale transporte
+    "meal", // Vale refeição/alimentação
+    "health", // Plano de saúde
+    "dental", // Plano odontológico
+    "life_insurance", // Seguro de vida
+    "pension", // Previdência privada
+    "education", // Auxílio educação
+    "childcare", // Auxílio creche
+    "gym", // Gympass/academia
+    "other"
+  ]).notNull(),
+  
+  // Configurações
+  isActive: boolean("isActive").default(true),
+  requiresDocument: boolean("requiresDocument").default(false), // Requer documento (ex: VT)
+  hasEmployeeContribution: boolean("hasEmployeeContribution").default(false), // Tem desconto do funcionário
+  maxEmployeeContributionPercent: decimal("maxEmployeeContributionPercent", { precision: 5, scale: 2 }), // Ex: 6% para VT
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type BenefitType = typeof benefitTypes.$inferSelect;
+export type InsertBenefitType = typeof benefitTypes.$inferInsert;
+
+// ============ EMPLOYEE BENEFITS (Benefícios por Funcionário) ============
+export const employeeBenefits = mysqlTable("employee_benefits", {
+  id: int("id").autoincrement().primaryKey(),
+  employeeId: int("employeeId").references(() => employees.id).notNull(),
+  benefitTypeId: int("benefitTypeId").references(() => benefitTypes.id).notNull(),
+  
+  // Valores
+  companyValue: decimal("companyValue", { precision: 10, scale: 2 }).notNull(), // Valor pago pela empresa
+  employeeDiscount: decimal("employeeDiscount", { precision: 10, scale: 2 }).default("0"), // Desconto do funcionário
+  
+  // Para VT
+  transportLines: json("transportLines"), // Linhas de transporte utilizadas
+  
+  // Para plano de saúde
+  planName: varchar("planName", { length: 100 }),
+  planType: varchar("planType", { length: 50 }), // Enfermaria, apartamento, etc.
+  dependentsCount: int("dependentsCount").default(0),
+  dependentsInfo: json("dependentsInfo"), // Array de dependentes
+  
+  // Vigência
+  startDate: timestamp("startDate").notNull(),
+  endDate: timestamp("endDate"),
+  
+  // Status
+  status: mysqlEnum("status", [
+    "active",
+    "suspended",
+    "cancelled"
+  ]).default("active").notNull(),
+  
+  // Documentação
+  optInDocumentUrl: text("optInDocumentUrl"), // Documento de adesão
+  optInDocumentKey: varchar("optInDocumentKey", { length: 255 }),
+  optOutDocumentUrl: text("optOutDocumentUrl"), // Documento de cancelamento
+  optOutDocumentKey: varchar("optOutDocumentKey", { length: 255 }),
+  
+  notes: text("notes"),
+  
+  createdBy: int("createdBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmployeeBenefit = typeof employeeBenefits.$inferSelect;
+export type InsertEmployeeBenefit = typeof employeeBenefits.$inferInsert;
+
+// ============ ONBOARDING/OFFBOARDING CHECKLISTS ============
+export const checklistTemplates = mysqlTable("checklist_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  type: mysqlEnum("type", ["onboarding", "offboarding"]).notNull(),
+  description: text("description"),
+  
+  // Pode ser específico por departamento ou cargo
+  departmentId: int("departmentId").references(() => departments.id),
+  position: varchar("position", { length: 100 }),
+  
+  isDefault: boolean("isDefault").default(false), // Template padrão
+  isActive: boolean("isActive").default(true),
+  
+  createdBy: int("createdBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ChecklistTemplate = typeof checklistTemplates.$inferSelect;
+export type InsertChecklistTemplate = typeof checklistTemplates.$inferInsert;
+
+// ============ CHECKLIST ITEMS (Itens do Checklist) ============
+export const checklistItems = mysqlTable("checklist_items", {
+  id: int("id").autoincrement().primaryKey(),
+  templateId: int("templateId").references(() => checklistTemplates.id).notNull(),
+  
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  
+  // Categoria do item
+  category: mysqlEnum("category", [
+    "documents", // Documentos
+    "equipment", // Equipamentos
+    "access", // Acessos (sistemas, email, etc.)
+    "training", // Treinamentos
+    "administrative", // Administrativo
+    "other"
+  ]).notNull(),
+  
+  // Responsável
+  responsibleRole: mysqlEnum("responsibleRole", [
+    "hr", // RH
+    "manager", // Gestor direto
+    "it", // TI
+    "finance", // Financeiro
+    "employee", // Próprio funcionário
+    "other"
+  ]).default("hr").notNull(),
+  
+  // Prazo
+  daysToComplete: int("daysToComplete").default(0), // Dias após admissão/demissão
+  isMandatory: boolean("isMandatory").default(true),
+  
+  // Documento vinculado (se aplicável)
+  documentModelId: int("documentModelId").references(() => documentModels.id),
+  documentTypeId: int("documentTypeId").references(() => documentTypes.id),
+  
+  // Ordem
+  sortOrder: int("sortOrder").default(0),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChecklistItem = typeof checklistItems.$inferSelect;
+export type InsertChecklistItem = typeof checklistItems.$inferInsert;
+
+// ============ EMPLOYEE CHECKLISTS (Checklists por Funcionário) ============
+export const employeeChecklists = mysqlTable("emp_checklists", {
+  id: int("id").autoincrement().primaryKey(),
+  employeeId: int("employeeId").references(() => employees.id).notNull(),
+  templateId: int("templateId").references(() => checklistTemplates.id).notNull(),
+  
+  type: mysqlEnum("type", ["onboarding", "offboarding"]).notNull(),
+  
+  // Datas
+  startDate: timestamp("startDate").notNull(), // Data de início (admissão ou aviso de demissão)
+  targetCompletionDate: timestamp("targetCompletionDate"),
+  completedAt: timestamp("completedAt"),
+  
+  // Status geral
+  status: mysqlEnum("status", [
+    "in_progress",
+    "completed",
+    "cancelled"
+  ]).default("in_progress").notNull(),
+  
+  // Progresso
+  totalItems: int("totalItems").default(0),
+  completedItems: int("completedItems").default(0),
+  
+  notes: text("notes"),
+  
+  createdBy: int("createdBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmployeeChecklist = typeof employeeChecklists.$inferSelect;
+export type InsertEmployeeChecklist = typeof employeeChecklists.$inferInsert;
+
+// ============ EMPLOYEE CHECKLIST ITEMS (Progresso dos Itens) ============
+export const employeeChecklistItems = mysqlTable("emp_checklist_items", {
+  id: int("id").autoincrement().primaryKey(),
+  empChecklistId: int("empChecklistId").references(() => employeeChecklists.id).notNull(),
+  itemId: int("itemId").references(() => checklistItems.id).notNull(),
+  
+  // Status do item
+  status: mysqlEnum("status", [
+    "pending",
+    "in_progress",
+    "completed",
+    "skipped", // Pulado (não aplicável)
+    "blocked" // Bloqueado por dependência
+  ]).default("pending").notNull(),
+  
+  // Prazo
+  dueDate: timestamp("dueDate"),
+  completedAt: timestamp("completedAt"),
+  
+  // Responsável atual
+  assignedTo: int("assignedTo").references(() => users.id),
+  completedBy: int("completedBy").references(() => users.id),
+  
+  // Documento vinculado (se gerado/uploaded)
+  documentId: int("documentId").references(() => documents.id),
+  genDocId: int("genDocId").references(() => generatedDocuments.id),
+  
+  notes: text("notes"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmployeeChecklistItem = typeof employeeChecklistItems.$inferSelect;
+export type InsertEmployeeChecklistItem = typeof employeeChecklistItems.$inferInsert;
+
+// ============ NOTIFICATION PREFERENCES (Preferências de Notificação) ============
+export const notificationPreferences = mysqlTable("notification_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id).notNull().unique(),
+  
+  // Resumos por email
+  dailyDigest: boolean("dailyDigest").default(true),
+  dailyDigestTime: varchar("dailyDigestTime", { length: 5 }).default("08:00"), // HH:MM
+  weeklyDigest: boolean("weeklyDigest").default(true),
+  weeklyDigestDay: int("weeklyDigestDay").default(1), // 0=Dom, 1=Seg, etc.
+  
+  // Tipos de notificação
+  notifyDocumentExpiring: boolean("notifyDocumentExpiring").default(true),
+  notifyVacationExpiring: boolean("notifyVacationExpiring").default(true),
+  notifyNewAlert: boolean("notifyNewAlert").default(true),
+  notifyChecklistPending: boolean("notifyChecklistPending").default(true),
+  notifySignatureRequired: boolean("notifySignatureRequired").default(true),
+  notifyLawsuitUpdate: boolean("notifyLawsuitUpdate").default(true),
+  
+  // Canais
+  emailEnabled: boolean("emailEnabled").default(true),
+  inAppEnabled: boolean("inAppEnabled").default(true),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type NotificationPreference = typeof notificationPreferences.$inferSelect;
+export type InsertNotificationPreference = typeof notificationPreferences.$inferInsert;
+
+// ============ NOTIFICATIONS (Notificações In-App) ============
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id).notNull(),
+  
+  // Tipo e conteúdo
+  type: mysqlEnum("type", [
+    "document_expiring",
+    "document_expired",
+    "vacation_expiring",
+    "vacation_approved",
+    "vacation_rejected",
+    "alert_new",
+    "checklist_pending",
+    "checklist_overdue",
+    "signature_required",
+    "signature_completed",
+    "lawsuit_update",
+    "hearing_reminder",
+    "deadline_reminder",
+    "system"
+  ]).notNull(),
+  
+  title: varchar("title", { length: 200 }).notNull(),
+  message: text("message").notNull(),
+  
+  // Link para ação
+  actionUrl: varchar("actionUrl", { length: 500 }),
+  actionLabel: varchar("actionLabel", { length: 50 }),
+  
+  // Entidade relacionada
+  relatedEntityType: varchar("relatedEntityType", { length: 50 }),
+  relatedEntityId: int("relatedEntityId"),
+  
+  // Prioridade
+  priority: mysqlEnum("priority", ["low", "medium", "high", "urgent"]).default("medium"),
+  
+  // Status
+  isRead: boolean("isRead").default(false),
+  readAt: timestamp("readAt"),
+  
+  // Expiração
+  expiresAt: timestamp("expiresAt"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;
+
+// ============ NOTIFICATION DIGESTS (Resumos Enviados) ============
+export const notificationDigests = mysqlTable("notification_digests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id).notNull(),
+  
+  type: mysqlEnum("type", ["daily", "weekly"]).notNull(),
+  
+  // Período coberto
+  periodStart: timestamp("periodStart").notNull(),
+  periodEnd: timestamp("periodEnd").notNull(),
+  
+  // Conteúdo
+  itemsIncluded: int("itemsIncluded").default(0),
+  summary: json("summary"), // Resumo dos itens
+  
+  // Envio
+  sentAt: timestamp("sentAt"),
+  status: mysqlEnum("status", ["pending", "sent", "failed"]).default("pending"),
+  errorMessage: text("errorMessage"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type NotificationDigest = typeof notificationDigests.$inferSelect;
+export type InsertNotificationDigest = typeof notificationDigests.$inferInsert;

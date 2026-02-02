@@ -40,7 +40,11 @@ import {
   Calendar,
   Scale,
   FileSignature,
-  Send
+  Send,
+  Palmtree,
+  Gift,
+  ClipboardList,
+  Bell
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -58,6 +62,13 @@ const menuItems = [
   { icon: Shield, label: "LGPD & Assinaturas", path: "/lgpd" },
   { icon: Clock, label: "Importar Ponto", path: "/timeclock" },
   { icon: BarChart3, label: "Relatórios", path: "/reports" },
+];
+
+const hrMenuItems = [
+  { icon: Palmtree, label: "Férias e Afastamentos", path: "/vacations" },
+  { icon: Gift, label: "Benefícios", path: "/benefits" },
+  { icon: ClipboardList, label: "Onboarding/Offboarding", path: "/checklists" },
+  { icon: Bell, label: "Notificações", path: "/notifications" },
 ];
 
 const legalMenuItems = [
@@ -224,6 +235,34 @@ function DashboardLayoutContent({
           <SidebarContent className="gap-0 bg-slate-900">
             <SidebarMenu className="px-2 py-3">
               {menuItems.map(item => {
+                const isActive = location === item.path;
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => handleMenuClick(item)}
+                      tooltip={item.label}
+                      className={`h-10 transition-all font-normal text-slate-300 hover:text-white hover:bg-slate-800 ${
+                        isActive ? "bg-blue-600 text-white hover:bg-blue-700" : ""
+                      }`}
+                    >
+                      <item.icon
+                        className={`h-4 w-4 ${isActive ? "text-white" : "text-slate-400"}`}
+                      />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+              
+              {/* Separador - Módulo RH */}
+              {!isCollapsed && (
+                <div className="px-3 py-2 mt-4">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Gestão de Pessoas</span>
+                </div>
+              )}
+              
+              {hrMenuItems.map(item => {
                 const isActive = location === item.path;
                 return (
                   <SidebarMenuItem key={item.path}>

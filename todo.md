@@ -283,3 +283,47 @@
 - [x] Armazenamento na pasta do funcionário
 - [x] Notificação ao RH sobre assinatura concluída
 - [x] Histórico de documentos assinados
+
+
+## Fase 8 - Funcionalidades Essenciais
+
+### Gestão de Férias e Afastamentos
+- [x] Tabela de férias no banco de dados (período aquisitivo, concessivo, saldo)
+- [x] Tabela de afastamentos (licença médica, maternidade, etc.)
+- [x] CRUD de solicitações de férias
+- [x] Workflow de aprovação de férias
+- [x] Cálculo automático de período aquisitivo/concessivo
+- [x] Alertas de férias vencendo (prazo legal 12 meses)
+- [ ] Geração automática de aviso e recibo de férias
+- [x] Dashboard de férias por departamento
+- [ ] Calendário visual de férias da equipe
+
+### Gestão de Benefícios
+- [x] Tabela de tipos de benefícios (VT, VR/VA, plano de saúde, etc.)
+- [x] Tabela de benefícios por funcionário
+- [x] CRUD de benefícios
+- [x] Controle de valores e descontos
+- [x] Relatório de custos com benefícios por departamento
+- [ ] Alertas de vencimento de contratos com fornecedores
+- [x] Histórico de alterações de benefícios
+
+### Onboarding/Offboarding Automatizado
+- [x] Tabela de checklists de onboarding/offboarding
+- [x] Tabela de itens de checklist
+- [x] Tabela de progresso por funcionário
+- [x] Checklist padrão de admissão (documentos, acessos, treinamentos)
+- [x] Checklist padrão de demissão (devolução, revogação de acessos)
+- [x] Workflow com responsáveis e prazos
+- [x] Acompanhamento de progresso em tempo real
+- [ ] Integração com modelos de documentos existentes
+- [ ] Notificações automáticas para responsáveis
+
+### Notificações Consolidadas
+- [x] Tabela de preferências de notificação por usuário
+- [x] Tabela de notificações pendentes
+- [x] Resumo diário por email para gestores
+- [x] Resumo semanal por email
+- [ ] Notificações de documentos pendentes para funcionários
+- [ ] Lembretes automáticos de vencimentos
+- [x] Painel de notificações no sistema (bell icon)
+- [x] Configuração de preferências de notificação

@@ -21,6 +21,10 @@ import { generateLgpdConsentPdf } from "./pdfService";
 import * as lawsuitDb from "./lawsuitDb";
 import * as escavadorService from "./escavadorService";
 import * as documentModelService from "./documentModelService";
+import * as vacationService from "./vacationService";
+import * as benefitService from "./benefitService";
+import * as checklistService from "./checklistService";
+import * as notificationService from "./notificationService";
 
 // Admin-only procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -2078,6 +2082,522 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return analyticsService.getPredictiveHistory(input?.employeeId);
       }),
+  }),
+
+  // ============ VACATIONS (FÉRIAS) ============
+  vacations: router({
+    // Get vacation periods
+    periods: protectedProcedure
+      .input(z.object({ employeeId: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        if (input?.employeeId) {
+          return vacationService.getVacationPeriods(input.employeeId);
+        }
+        return vacationService.getAllVacationPeriods();
+      }),
+    
+    // Get summary
+    summary: protectedProcedure.query(async () => {
+      return vacationService.getVacationSummary();
+    }),
+    
+    // Initialize periods for existing employees
+    initialize: adminProcedure.mutation(async () => {
+      return vacationService.initializeVacationPeriods();
+    }),
+    
+    // Get expiring vacations
+    expiring: protectedProcedure
+      .input(z.object({ days: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return vacationService.getAllVacationPeriods({ expiringInDays: input?.days || 30 });
+      }),
+    
+    // Calendar view
+    calendar: protectedProcedure
+      .input(z.object({
+        startDate: z.date(),
+        endDate: z.date(),
+        departmentId: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        return vacationService.getVacationCalendar(input.startDate, input.endDate, input.departmentId);
+      }),
+  }),
+
+  // ============ VACATION REQUESTS (SOLICITAÇÕES DE FÉRIAS) ============
+  vacationRequests: router({
+    list: protectedProcedure
+      .input(z.object({
+        employeeId: z.number().optional(),
+        status: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return vacationService.getVacationRequests(input);
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        vacationId: z.number(),
+        employeeId: z.number(),
+        startDate: z.date(),
+        endDate: z.date(),
+        sellDays: z.number().optional(),
+        advance13th: z.boolean().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await vacationService.createVacationRequest({
+          ...input,
+          requestedBy: ctx.user.id,
+        });
+        return { id };
+      }),
+    
+    approve: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        return vacationService.approveVacationRequest(input.id, ctx.user.id);
+      }),
+    
+    reject: adminProcedure
+      .input(z.object({ id: z.number(), reason: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        return vacationService.rejectVacationRequest(input.id, ctx.user.id, input.reason);
+      }),
+    
+    cancel: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return vacationService.cancelVacationRequest(input.id);
+      }),
+  }),
+
+  // ============ LEAVES (AFASTAMENTOS) ============
+  leaves: router({
+    list: protectedProcedure
+      .input(z.object({
+        employeeId: z.number().optional(),
+        status: z.string().optional(),
+        leaveType: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return vacationService.getLeaves(input);
+      }),
+    
+    summary: protectedProcedure.query(async () => {
+      return vacationService.getLeaveSummary();
+    }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        employeeId: z.number(),
+        leaveType: z.enum(['medical', 'accident', 'maternity', 'paternity', 'bereavement', 'wedding', 'military', 'jury_duty', 'donation', 'other']),
+        startDate: z.date(),
+        endDate: z.date().optional(),
+        expectedReturnDate: z.date().optional(),
+        documentData: z.string().optional(),
+        documentName: z.string().optional(),
+        cid: z.string().optional(),
+        doctorName: z.string().optional(),
+        doctorCrm: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await vacationService.createLeave({
+          ...input,
+          createdBy: ctx.user.id,
+        });
+        return { id };
+      }),
+    
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        endDate: z.date().optional(),
+        actualReturnDate: z.date().optional(),
+        status: z.enum(['active', 'completed', 'cancelled']).optional(),
+        inssProtocol: z.string().optional(),
+        inssStartDate: z.date().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        return vacationService.updateLeave(id, data);
+      }),
+    
+    calendar: protectedProcedure
+      .input(z.object({
+        startDate: z.date(),
+        endDate: z.date(),
+        departmentId: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        return vacationService.getLeavesCalendar(input.startDate, input.endDate, input.departmentId);
+      }),
+  }),
+
+  // ============ BENEFIT TYPES (TIPOS DE BENEFÍCIOS) ============
+  benefitTypes: router({
+    list: protectedProcedure
+      .input(z.object({ activeOnly: z.boolean().optional() }).optional())
+      .query(async ({ input }) => {
+        return benefitService.getBenefitTypes(input?.activeOnly !== false);
+      }),
+    
+    create: adminProcedure
+      .input(z.object({
+        name: z.string(),
+        code: z.string(),
+        description: z.string().optional(),
+        category: z.enum(['transport', 'meal', 'health', 'dental', 'life_insurance', 'pension', 'education', 'childcare', 'gym', 'other']),
+        requiresDocument: z.boolean().optional(),
+        hasEmployeeContribution: z.boolean().optional(),
+        maxEmployeeContributionPercent: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const id = await benefitService.createBenefitType(input);
+        return { id };
+      }),
+    
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        category: z.enum(['transport', 'meal', 'health', 'dental', 'life_insurance', 'pension', 'education', 'childcare', 'gym', 'other']).optional(),
+        requiresDocument: z.boolean().optional(),
+        hasEmployeeContribution: z.boolean().optional(),
+        maxEmployeeContributionPercent: z.string().optional(),
+        isActive: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        return benefitService.updateBenefitType(id, data);
+      }),
+    
+    createDefaults: adminProcedure.mutation(async () => {
+      return benefitService.createDefaultBenefitTypes();
+    }),
+  }),
+
+  // ============ EMPLOYEE BENEFITS (BENEFÍCIOS POR FUNCIONÁRIO) ============
+  employeeBenefits: router({
+    list: protectedProcedure
+      .input(z.object({
+        benefitTypeId: z.number().optional(),
+        status: z.string().optional(),
+        departmentId: z.number().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return benefitService.getAllEmployeeBenefits(input);
+      }),
+    
+    byEmployee: protectedProcedure
+      .input(z.object({ employeeId: z.number() }))
+      .query(async ({ input }) => {
+        return benefitService.getEmployeeBenefits(input.employeeId);
+      }),
+    
+    summary: protectedProcedure.query(async () => {
+      return benefitService.getBenefitSummary();
+    }),
+    
+    costsByDepartment: protectedProcedure.query(async () => {
+      return benefitService.getBenefitCostsByDepartment();
+    }),
+    
+    costsByType: protectedProcedure.query(async () => {
+      return benefitService.getBenefitCostsByType();
+    }),
+    
+    assign: protectedProcedure
+      .input(z.object({
+        employeeId: z.number(),
+        benefitTypeId: z.number(),
+        companyValue: z.string(),
+        employeeDiscount: z.string().optional(),
+        transportLines: z.any().optional(),
+        planName: z.string().optional(),
+        planType: z.string().optional(),
+        dependentsCount: z.number().optional(),
+        dependentsInfo: z.any().optional(),
+        startDate: z.date(),
+        endDate: z.date().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await benefitService.assignBenefitToEmployee({
+          ...input,
+          createdBy: ctx.user.id,
+        });
+        return { id };
+      }),
+    
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        companyValue: z.string().optional(),
+        employeeDiscount: z.string().optional(),
+        transportLines: z.any().optional(),
+        planName: z.string().optional(),
+        planType: z.string().optional(),
+        dependentsCount: z.number().optional(),
+        dependentsInfo: z.any().optional(),
+        endDate: z.date().optional(),
+        status: z.enum(['active', 'suspended', 'cancelled']).optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        return benefitService.updateEmployeeBenefit(id, data);
+      }),
+    
+    cancel: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return benefitService.cancelEmployeeBenefit(input.id);
+      }),
+  }),
+
+  // ============ CHECKLIST TEMPLATES ============
+  checklistTemplates: router({
+    list: protectedProcedure
+      .input(z.object({ type: z.enum(['onboarding', 'offboarding']).optional() }).optional())
+      .query(async ({ input }) => {
+        return checklistService.getChecklistTemplates(input?.type);
+      }),
+    
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return checklistService.getTemplateWithItems(input.id);
+      }),
+    
+    create: adminProcedure
+      .input(z.object({
+        name: z.string(),
+        type: z.enum(['onboarding', 'offboarding']),
+        description: z.string().optional(),
+        departmentId: z.number().optional(),
+        position: z.string().optional(),
+        isDefault: z.boolean().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await checklistService.createChecklistTemplate({
+          ...input,
+          createdBy: ctx.user.id,
+        });
+        return { id };
+      }),
+    
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        departmentId: z.number().optional(),
+        position: z.string().optional(),
+        isDefault: z.boolean().optional(),
+        isActive: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        return checklistService.updateChecklistTemplate(id, data);
+      }),
+    
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return checklistService.deleteChecklistTemplate(input.id);
+      }),
+    
+    createDefaults: adminProcedure.mutation(async ({ ctx }) => {
+      const onboarding = await checklistService.createDefaultOnboardingTemplate(ctx.user.id);
+      const offboarding = await checklistService.createDefaultOffboardingTemplate(ctx.user.id);
+      return { onboarding, offboarding };
+    }),
+  }),
+
+  // ============ CHECKLIST ITEMS ============
+  checklistItems: router({
+    add: adminProcedure
+      .input(z.object({
+        templateId: z.number(),
+        title: z.string(),
+        description: z.string().optional(),
+        category: z.enum(['documents', 'equipment', 'access', 'training', 'administrative']),
+        responsibleRole: z.enum(['hr', 'it', 'manager', 'finance', 'employee']),
+        daysToComplete: z.number().optional(),
+        isMandatory: z.boolean().optional(),
+        documentModelId: z.number().optional(),
+        documentTypeId: z.number().optional(),
+        sortOrder: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const id = await checklistService.addChecklistItem(input);
+        return { id };
+      }),
+    
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        title: z.string().optional(),
+        description: z.string().optional(),
+        category: z.enum(['documents', 'equipment', 'access', 'training', 'administrative']).optional(),
+        responsibleRole: z.enum(['hr', 'it', 'manager', 'finance', 'employee']).optional(),
+        daysToComplete: z.number().optional(),
+        isMandatory: z.boolean().optional(),
+        documentModelId: z.number().optional(),
+        documentTypeId: z.number().optional(),
+        sortOrder: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        return checklistService.updateChecklistItem(id, data);
+      }),
+    
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return checklistService.deleteChecklistItem(input.id);
+      }),
+  }),
+
+  // ============ EMPLOYEE CHECKLISTS ============
+  employeeChecklists: router({
+    list: protectedProcedure
+      .input(z.object({
+        employeeId: z.number().optional(),
+        type: z.enum(['onboarding', 'offboarding']).optional(),
+        status: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return checklistService.getEmployeeChecklists(input);
+      }),
+    
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return checklistService.getChecklistProgress(input.id);
+      }),
+    
+    summary: protectedProcedure.query(async () => {
+      return checklistService.getChecklistSummary();
+    }),
+    
+    overdue: protectedProcedure.query(async () => {
+      return checklistService.getOverdueChecklistItems();
+    }),
+    
+    start: protectedProcedure
+      .input(z.object({
+        employeeId: z.number(),
+        templateId: z.number(),
+        type: z.enum(['onboarding', 'offboarding']),
+        startDate: z.date(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await checklistService.startEmployeeChecklist({
+          ...input,
+          createdBy: ctx.user.id,
+        });
+        return { id };
+      }),
+    
+    updateItemStatus: protectedProcedure
+      .input(z.object({
+        itemProgressId: z.number(),
+        status: z.enum(['pending', 'in_progress', 'completed', 'skipped', 'blocked']),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        return checklistService.updateChecklistItemStatus(
+          input.itemProgressId,
+          input.status,
+          ctx.user.id,
+          input.notes
+        );
+      }),
+    
+    assignItem: protectedProcedure
+      .input(z.object({
+        itemProgressId: z.number(),
+        assignedTo: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        return checklistService.assignChecklistItem(input.itemProgressId, input.assignedTo);
+      }),
+  }),
+
+  // ============ NOTIFICATIONS ============
+  notifications: router({
+    list: protectedProcedure
+      .input(z.object({
+        limit: z.number().optional(),
+        unreadOnly: z.boolean().optional(),
+      }).optional())
+      .query(async ({ input, ctx }) => {
+        return notificationService.getUserNotifications(
+          ctx.user.id,
+          input?.limit || 50,
+          input?.unreadOnly || false
+        );
+      }),
+    
+    unreadCount: protectedProcedure.query(async ({ ctx }) => {
+      return notificationService.getUnreadNotificationCount(ctx.user.id);
+    }),
+    
+    markAsRead: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return notificationService.markNotificationAsRead(input.id);
+      }),
+    
+    markAllAsRead: protectedProcedure.mutation(async ({ ctx }) => {
+      return notificationService.markAllNotificationsAsRead(ctx.user.id);
+    }),
+    
+    preferences: protectedProcedure.query(async ({ ctx }) => {
+      return notificationService.getUserPreferences(ctx.user.id);
+    }),
+    
+    updatePreferences: protectedProcedure
+      .input(z.object({
+        dailyDigest: z.boolean().optional(),
+        dailyDigestTime: z.string().optional(),
+        weeklyDigest: z.boolean().optional(),
+        weeklyDigestDay: z.number().optional(),
+        notifyDocumentExpiring: z.boolean().optional(),
+        notifyVacationExpiring: z.boolean().optional(),
+        notifyNewAlert: z.boolean().optional(),
+        notifyChecklistPending: z.boolean().optional(),
+        notifySignatureRequired: z.boolean().optional(),
+        notifyLawsuitUpdate: z.boolean().optional(),
+        emailEnabled: z.boolean().optional(),
+        inAppEnabled: z.boolean().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        return notificationService.updateUserPreferences(ctx.user.id, input);
+      }),
+    
+    sendDailyDigest: protectedProcedure.mutation(async ({ ctx }) => {
+      return notificationService.generateDailyDigest(ctx.user.id);
+    }),
+    
+    sendWeeklyDigest: protectedProcedure.mutation(async ({ ctx }) => {
+      return notificationService.generateWeeklyDigest(ctx.user.id);
+    }),
+    
+    // Admin: send digests to all users
+    sendAllDailyDigests: adminProcedure.mutation(async () => {
+      return notificationService.sendDailyDigestsToAllUsers();
+    }),
+    
+    sendAllWeeklyDigests: adminProcedure.mutation(async () => {
+      return notificationService.sendWeeklyDigestsToAllUsers();
+    }),
   }),
 });
 
