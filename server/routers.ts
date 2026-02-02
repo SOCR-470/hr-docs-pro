@@ -20,6 +20,7 @@ import { sendLgpdConsentEmail, sendDocumentShareEmail, sendDocumentSignatureEmai
 import { generateLgpdConsentPdf } from "./pdfService";
 import * as lawsuitDb from "./lawsuitDb";
 import * as escavadorService from "./escavadorService";
+import * as documentModelService from "./documentModelService";
 
 // Admin-only procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -1815,6 +1816,221 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const id = await escavadorService.importProcess(input.escavadorProcess);
         return { id };
+      }),
+  }),
+
+  // ============ DOCUMENT MODELS ============
+  documentModels: router({
+    // List all models
+    list: protectedProcedure
+      .input(z.object({ activeOnly: z.boolean().optional().default(true) }).optional())
+      .query(async ({ input }) => {
+        return documentModelService.getDocumentModels(input?.activeOnly ?? true);
+      }),
+    
+    // Get model by ID
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return documentModelService.getDocumentModelById(input.id);
+      }),
+    
+    // Create model
+    create: adminProcedure
+      .input(z.object({
+        name: z.string(),
+        description: z.string().optional(),
+        category: z.enum(['admission', 'safety', 'benefits', 'confidentiality', 'termination', 'other']),
+        content: z.string(),
+        requiresSignature: z.boolean().optional().default(true),
+        requiresWitness: z.boolean().optional().default(false),
+        witnessCount: z.number().optional().default(0),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        return documentModelService.createDocumentModel({
+          ...input,
+          createdBy: ctx.user.id,
+        });
+      }),
+    
+    // Update model
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        description: z.string().optional().nullable(),
+        category: z.enum(['admission', 'safety', 'benefits', 'confidentiality', 'termination', 'other']).optional(),
+        content: z.string().optional(),
+        requiresSignature: z.boolean().optional(),
+        requiresWitness: z.boolean().optional(),
+        witnessCount: z.number().optional(),
+        isActive: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        return documentModelService.updateDocumentModel(id, data);
+      }),
+    
+    // Delete model (soft)
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await documentModelService.deleteDocumentModel(input.id);
+        return { success: true };
+      }),
+    
+    // Create default models
+    createDefaults: adminProcedure.mutation(async ({ ctx }) => {
+      return documentModelService.createDefaultModels(ctx.user.id);
+    }),
+    
+    // Get available variables
+    variables: protectedProcedure.query(() => {
+      return documentModelService.AVAILABLE_VARIABLES;
+    }),
+    
+    // Preview filled document
+    preview: protectedProcedure
+      .input(z.object({
+        modelId: z.number(),
+        employeeId: z.number(),
+      }))
+      .query(async ({ input }) => {
+        const model = await documentModelService.getDocumentModelById(input.modelId);
+        if (!model) throw new TRPCError({ code: 'NOT_FOUND', message: 'Modelo não encontrado' });
+        
+        const filledContent = await documentModelService.fillDocumentVariables(model.content, input.employeeId);
+        return { content: filledContent, model };
+      }),
+  }),
+
+  // ============ GENERATED DOCUMENTS ============
+  generatedDocuments: router({
+    // List all generated documents
+    list: protectedProcedure
+      .input(z.object({ status: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        return documentModelService.listGeneratedDocuments(input?.status);
+      }),
+    
+    // Get by employee
+    byEmployee: protectedProcedure
+      .input(z.object({ employeeId: z.number() }))
+      .query(async ({ input }) => {
+        return documentModelService.getGeneratedDocumentsByEmployee(input.employeeId);
+      }),
+    
+    // Generate document for signature
+    generate: protectedProcedure
+      .input(z.object({
+        modelId: z.number(),
+        employeeId: z.number(),
+        expirationDays: z.number().optional().default(7),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        return documentModelService.generateDocumentForSignature(
+          input.modelId,
+          input.employeeId,
+          ctx.user.id,
+          input.expirationDays
+        );
+      }),
+    
+    // Send for signature
+    send: protectedProcedure
+      .input(z.object({ documentId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        return documentModelService.sendDocumentForSignature(input.documentId, ctx.user.id);
+      }),
+    
+    // Get by token (public)
+    getByToken: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const doc = await documentModelService.getGeneratedDocumentByToken(input.token);
+        if (!doc) throw new TRPCError({ code: 'NOT_FOUND', message: 'Documento não encontrado' });
+        
+        // Check expiration
+        if (doc.document.expiresAt && new Date(doc.document.expiresAt) < new Date()) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Link de assinatura expirado' });
+        }
+        
+        return doc;
+      }),
+    
+    // Verify identity
+    verifyIdentity: publicProcedure
+      .input(z.object({
+        token: z.string(),
+        cpf: z.string(),
+        birthDate: z.string(),
+        code: z.string().optional().default(''),
+      }))
+      .mutation(async ({ input }) => {
+        return documentModelService.verifyIdentityForSignature(
+          input.token,
+          input.cpf,
+          input.birthDate,
+          input.code
+        );
+      }),
+    
+    // Sign document
+    sign: publicProcedure
+      .input(z.object({
+        token: z.string(),
+        signedName: z.string(),
+        signedCpf: z.string(),
+        signedBirthDate: z.string(),
+        signatureImage: z.string(),
+        signatureType: z.enum(['drawn', 'typed', 'uploaded']),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const ipAddress = ctx.req.ip || ctx.req.headers['x-forwarded-for']?.toString() || 'unknown';
+        const userAgent = ctx.req.headers['user-agent'] || 'unknown';
+        
+        return documentModelService.signDocument(
+          input.token,
+          input.signedName,
+          input.signedCpf,
+          input.signedBirthDate,
+          input.signatureImage,
+          input.signatureType,
+          ipAddress,
+          userAgent
+        );
+      }),
+  }),
+
+  // ============ COMPANY SETTINGS ============
+  companySettings: router({
+    get: protectedProcedure.query(async () => {
+      return documentModelService.getCompanySettings();
+    }),
+    
+    upsert: adminProcedure
+      .input(z.object({
+        companyName: z.string(),
+        tradeName: z.string().optional().nullable(),
+        cnpj: z.string(),
+        stateRegistration: z.string().optional().nullable(),
+        municipalRegistration: z.string().optional().nullable(),
+        address: z.string().optional().nullable(),
+        addressNumber: z.string().optional().nullable(),
+        addressComplement: z.string().optional().nullable(),
+        neighborhood: z.string().optional().nullable(),
+        city: z.string().optional().nullable(),
+        state: z.string().optional().nullable(),
+        zipCode: z.string().optional().nullable(),
+        phone: z.string().optional().nullable(),
+        email: z.string().email().optional().nullable(),
+        website: z.string().optional().nullable(),
+        legalRepName: z.string().optional().nullable(),
+        legalRepCpf: z.string().optional().nullable(),
+        legalRepPosition: z.string().optional().nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        return documentModelService.upsertCompanySettings(input);
       }),
   }),
 

@@ -19,10 +19,18 @@ import Lawsuits from "./pages/Lawsuits";
 import Hearings from "./pages/Hearings";
 import Lawyers from "./pages/Lawyers";
 import CourtCommunications from "./pages/CourtCommunications";
+import DocumentModels from "./pages/DocumentModels";
+import SendDocuments from "./pages/SendDocuments";
+import SignDocument from "./pages/SignDocument";
 
 function Router() {
   return (
     <Switch>
+      {/* Public route - Document signing (no auth required) */}
+      <Route path="/sign/:token">
+        {(params) => <SignDocument token={params.token} />}
+      </Route>
+      
       {/* Protected routes with dashboard layout */}
       <Route path="/">
         <DashboardLayout>
@@ -69,6 +77,18 @@ function Router() {
       <Route path="/timeclock">
         <DashboardLayout>
           <TimeclockImport />
+        </DashboardLayout>
+      </Route>
+      
+      {/* Document Models Routes */}
+      <Route path="/document-models">
+        <DashboardLayout>
+          <DocumentModels />
+        </DashboardLayout>
+      </Route>
+      <Route path="/send-documents">
+        <DashboardLayout>
+          <SendDocuments />
         </DashboardLayout>
       </Route>
       

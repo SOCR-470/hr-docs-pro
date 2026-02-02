@@ -766,3 +766,158 @@ export const escavadorConfig = mysqlTable("escavador_config", {
 
 export type EscavadorConfig = typeof escavadorConfig.$inferSelect;
 export type InsertEscavadorConfig = typeof escavadorConfig.$inferInsert;
+
+
+// ============ DOCUMENT MODELS (Modelos de Documentos Editáveis) ============
+export const documentModels = mysqlTable("document_models", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  category: mysqlEnum("category", [
+    "admission", // Admissão (contrato, ficha de registro)
+    "safety", // Segurança (EPI, NR)
+    "benefits", // Benefícios (VT, VR, plano de saúde)
+    "confidentiality", // Confidencialidade
+    "termination", // Rescisão
+    "other"
+  ]).default("other").notNull(),
+  
+  // Conteúdo do modelo (HTML com variáveis)
+  content: text("content").notNull(),
+  
+  // Variáveis disponíveis neste modelo (JSON array)
+  availableVariables: json("availableVariables"),
+  
+  // Configurações
+  requiresSignature: boolean("requiresSignature").default(true),
+  requiresWitness: boolean("requiresWitness").default(false),
+  witnessCount: int("witnessCount").default(0),
+  
+  // Metadados
+  version: varchar("version", { length: 20 }).default("1.0"),
+  isActive: boolean("isActive").default(true),
+  
+  createdBy: int("createdBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DocumentModel = typeof documentModels.$inferSelect;
+export type InsertDocumentModel = typeof documentModels.$inferInsert;
+
+// ============ GENERATED DOCUMENTS (Documentos Gerados para Assinatura) ============
+export const generatedDocuments = mysqlTable("generated_documents", {
+  id: int("id").autoincrement().primaryKey(),
+  employeeId: int("employeeId").references(() => employees.id).notNull(),
+  modelId: int("modelId").references(() => documentModels.id).notNull(),
+  
+  // Token único para acesso público
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  
+  // Conteúdo gerado (HTML preenchido)
+  generatedContent: text("generatedContent").notNull(),
+  
+  // Dados usados para preencher (snapshot)
+  filledData: json("filledData"),
+  
+  // Status do documento
+  status: mysqlEnum("status", [
+    "draft", // Rascunho
+    "pending_signature", // Aguardando assinatura
+    "signed", // Assinado digitalmente
+    "printed", // Impresso para assinatura física
+    "uploaded", // Assinatura física uploaded
+    "cancelled", // Cancelado
+    "expired" // Expirado
+  ]).default("draft").notNull(),
+  
+  // Envio por email
+  sentAt: timestamp("sentAt"),
+  sentTo: varchar("sentTo", { length: 320 }),
+  sentBy: int("sentBy").references(() => users.id),
+  
+  // Validação de identidade
+  verificationCode: varchar("verificationCode", { length: 6 }),
+  verificationCodeExpiresAt: timestamp("verificationCodeExpiresAt"),
+  verificationAttempts: int("verificationAttempts").default(0),
+  
+  // Assinatura digital
+  signedAt: timestamp("signedAt"),
+  signedName: varchar("signedName", { length: 200 }),
+  signedCpf: varchar("signedCpf", { length: 14 }),
+  signedBirthDate: varchar("signedBirthDate", { length: 10 }),
+  signatureImage: text("signatureImage"), // Base64 da assinatura desenhada
+  signatureType: mysqlEnum("signatureType", ["drawn", "typed", "uploaded"]),
+  
+  // Metadados de assinatura
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  userAgent: text("userAgent"),
+  geoLocation: varchar("geoLocation", { length: 100 }),
+  
+  // Testemunhas (se necessário)
+  witnesses: json("witnesses"), // Array de {name, cpf, signedAt}
+  
+  // PDF final
+  pdfUrl: text("pdfUrl"),
+  pdfKey: varchar("pdfKey", { length: 255 }),
+  
+  // Assinatura física (upload)
+  uploadedSignatureUrl: text("uploadedSignatureUrl"),
+  uploadedSignatureKey: varchar("uploadedSignatureKey", { length: 255 }),
+  printedAt: timestamp("printedAt"),
+  printedBy: int("printedBy").references(() => users.id),
+  
+  // Validade
+  expiresAt: timestamp("expiresAt"),
+  
+  // Vinculação com documento final na pasta do funcionário
+  finalDocumentId: int("finalDocumentId").references(() => documents.id),
+  
+  createdBy: int("createdBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type GeneratedDocument = typeof generatedDocuments.$inferSelect;
+export type InsertGeneratedDocument = typeof generatedDocuments.$inferInsert;
+
+// ============ COMPANY SETTINGS (Dados da Empresa para Documentos) ============
+export const companySettings = mysqlTable("company_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  
+  // Dados básicos
+  companyName: varchar("companyName", { length: 200 }).notNull(),
+  tradeName: varchar("tradeName", { length: 200 }), // Nome fantasia
+  cnpj: varchar("cnpj", { length: 18 }).notNull(),
+  stateRegistration: varchar("stateRegistration", { length: 20 }),
+  municipalRegistration: varchar("municipalRegistration", { length: 20 }),
+  
+  // Endereço
+  address: varchar("address", { length: 300 }),
+  addressNumber: varchar("addressNumber", { length: 20 }),
+  addressComplement: varchar("addressComplement", { length: 100 }),
+  neighborhood: varchar("neighborhood", { length: 100 }),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 2 }),
+  zipCode: varchar("zipCode", { length: 10 }),
+  
+  // Contato
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email", { length: 320 }),
+  website: varchar("website", { length: 200 }),
+  
+  // Representante legal
+  legalRepName: varchar("legalRepName", { length: 200 }),
+  legalRepCpf: varchar("legalRepCpf", { length: 14 }),
+  legalRepPosition: varchar("legalRepPosition", { length: 100 }),
+  
+  // Logo
+  logoUrl: text("logoUrl"),
+  logoKey: varchar("logoKey", { length: 255 }),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CompanySettings = typeof companySettings.$inferSelect;
+export type InsertCompanySettings = typeof companySettings.$inferInsert;

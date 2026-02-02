@@ -245,3 +245,41 @@
 
 ### Bugs Reportados
 - [x] Página de Comunicações do Tribunal retorna erro 404 - página criada e adicionada ao menu
+
+
+## Fase 7 - Módulo de Modelos de Documentos
+
+### Editor de Modelos
+- [x] Cadastro de modelos (Contrato de Trabalho, Termo de EPI, Confidencialidade, etc.)
+- [x] Editor de texto com variáveis ({{nome}}, {{cargo}}, {{salario}}, {{data_admissao}}, etc.)
+- [x] Preview do documento com dados de exemplo
+- [x] Categorização por tipo (admissão, segurança, benefícios, etc.)
+
+### Variáveis Disponíveis
+- [x] Dados do funcionário (nome, CPF, RG, endereço, etc.)
+- [x] Dados profissionais (cargo, departamento, salário, horário, etc.)
+- [x] Dados da empresa (razão social, CNPJ, endereço, etc.)
+- [x] Datas (admissão, atual, por extenso, etc.)
+
+### Geração de PDF
+- [x] Preenchimento automático das variáveis com dados do funcionário
+- [x] Geração de PDF formatado
+- [x] Armazenamento no S3
+
+### Envio para Assinatura
+- [x] Seleção de funcionário e modelo
+- [x] Geração do documento preenchido
+- [x] Envio por email com link único de assinatura
+- [x] Validade configurável do link
+
+### Página Pública de Assinatura
+- [x] Visualização do documento (sem login)
+- [x] Validação de identidade (CPF + data nascimento)
+- [x] Captura de assinatura (desenho ou digitada)
+- [x] Registro de metadados (IP, data/hora, user agent)
+
+### Finalização
+- [x] PDF final com assinatura incorporada
+- [x] Armazenamento na pasta do funcionário
+- [x] Notificação ao RH sobre assinatura concluída
+- [x] Histórico de documentos assinados

@@ -38,7 +38,9 @@ import {
   Share2,
   Gavel,
   Calendar,
-  Scale
+  Scale,
+  FileSignature,
+  Send
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -49,6 +51,8 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Users, label: "Funcionários", path: "/employees" },
   { icon: FileStack, label: "Templates", path: "/templates" },
+  { icon: FileSignature, label: "Modelos de Documentos", path: "/document-models" },
+  { icon: Send, label: "Envio de Documentos", path: "/send-documents" },
   { icon: TrendingUp, label: "Analytics", path: "/analytics" },
   { icon: Share2, label: "Compartilhamentos", path: "/shares" },
   { icon: Shield, label: "LGPD & Assinaturas", path: "/lgpd" },
